@@ -1,0 +1,1 @@
+# vsm-training-platform
