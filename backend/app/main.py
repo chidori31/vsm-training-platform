@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from app.db import database_available
 
-app = FastAPI(title="VSM Training API", version="0.1.0")
+app = FastAPI(title="VSM Platform API", version="0.1.0")
 
 
 class HealthResponse(BaseModel):

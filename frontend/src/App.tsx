@@ -47,7 +47,7 @@ export default function App() {
     <main>
       <header>
         <span className="brand">ВСМ 400</span>
-        <span>Обучение проводников</span>
+        <span>Геймификация для ВСМ</span>
       </header>
       <p className="eyebrow">Этап 01 · Технический фундамент</p>
       <h1>
@@ -56,8 +56,8 @@ export default function App() {
         для новых скоростей
       </h1>
       <p className="intro">
-        Будущее пространство практики: рабочие ситуации, решения и разбор
-        последствий. Сейчас проверяем связь между приложением и сервером.
+        Проверяем связь между приложением и сервером. Назначение продукта и
+        целевая аудитория уточняются.
       </p>
       <section aria-labelledby="connection-title">
         <h2 id="connection-title">Подключение к платформе</h2>
@@ -86,7 +86,8 @@ export default function App() {
         </button>
       </section>
       <footer>
-        Сценарии обучения и игровой профиль появятся на следующих этапах.
+        PRODUCT SCOPE — pending clarification. Продуктовый scope не
+        зафиксирован.
       </footer>
     </main>
   );
