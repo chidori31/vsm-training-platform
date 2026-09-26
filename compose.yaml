@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-vsm}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -15,6 +15,28 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  bootstrap:
+    build: ./backend
+    command:
+      - sh
+      - -ec
+      - |
+        alembic upgrade head
+        python -m app.scenarios import /scenarios/demo
+        python -m app.retention_seed
+    volumes:
+      - ./scenarios:/scenarios:ro
+    environment:
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB:-vsm}
+      PGUSER: ${POSTGRES_USER:-vsm}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      DATABASE_URL: postgresql+psycopg:///
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
 
   backend:
     build: ./backend
@@ -28,10 +50,12 @@ services:
       DATABASE_URL: postgresql+psycopg:///
       DEMO_AUTH_ENABLED: ${DEMO_AUTH_ENABLED:-false}
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [
@@ -57,6 +81,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   frontend:
@@ -64,7 +90,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
     ports:
-      - "127.0.0.1:8080:80"
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
     depends_on:
       backend:
         condition: service_healthy

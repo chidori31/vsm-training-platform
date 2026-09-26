@@ -1,4 +1,4 @@
-# Сценарный движок: этапы 4–5
+# Сценарный движок
 
 `backend/app/domain/engine.py` исполняет нелинейный граф сценария: создаёт
 попытку, определяет текущий узел и доступные варианты, проверяет условия,
@@ -18,15 +18,15 @@
 
 Все функции находятся в `app.domain.engine`:
 
-| Функция                                                                                  | Результат и назначение                                              |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Функция                                                                                                    | Результат и назначение                                                          |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `start_session(scenario, *, session_id, employee_id, initial_scores, now, scoring_policy=ScoringPolicy())` | Начальный `ScenarioSession`, закреплённый за `scenario.id/version` и политикой. |
-| `current_node(scenario, session)`                                                        | Текущий `ScenarioNode` после проверки сессии.                       |
-| `available_choices(scenario, session, *, now)`                                           | Кортеж доступных обычных `Choice` в порядке документа.              |
-| `node_deadline(scenario, session)`                                                       | Момент истечения текущего таймера либо `None`.                      |
-| `advance(scenario, session, *, node_id, choice_id, decision_id, expected_sequence, now)` | Применение одного допустимого решения игрока.                       |
-| `expire(scenario, session, *, node_id, decision_id, expected_sequence, now)`             | Применение одного наступившего таймаута.                            |
-| `restore_session(scenario, session)`                                                     | Проверка снимка полным повторным исполнением истории.               |
+| `current_node(scenario, session)`                                                                          | Текущий `ScenarioNode` после проверки сессии.                                   |
+| `available_choices(scenario, session, *, now)`                                                             | Кортеж доступных обычных `Choice` в порядке документа.                          |
+| `node_deadline(scenario, session)`                                                                         | Момент истечения текущего таймера либо `None`.                                  |
+| `advance(scenario, session, *, node_id, choice_id, decision_id, expected_sequence, now)`                   | Применение одного допустимого решения игрока.                                   |
+| `expire(scenario, session, *, node_id, decision_id, expected_sequence, now)`                               | Применение одного наступившего таймаута.                                        |
+| `restore_session(scenario, session)`                                                                       | Проверка снимка полным повторным исполнением истории.                           |
 
 Неверная команда или несовместимый снимок вызывают `DomainError`.
 `expected_sequence` — число уже принятых решений: для первой команды это `0`,
@@ -252,7 +252,10 @@ print(session.current_node_id, session.status.value, len(session.decisions))
 
 ## Новая ветка за несколько минут
 
-Для демо `service-situation.json` увеличьте `version` с `1` до `2`. Добавьте
+Скопируйте `scenarios/demo/service-situation.json` в
+`scenarios/demo/service-situation-v2.json` и увеличьте `version` в копии с `1`
+до `2`. Сохраните исходный файл: старые версии нужны не только существующим
+сессиям, но и правилам/кампаниям на чистой БД. В копии добавьте
 в `choices` узла `request` следующий объект:
 
 ```json
@@ -280,12 +283,12 @@ print(session.current_node_id, session.status.value, len(session.decisions))
 Из `backend/` выполните:
 
 ```sh
-python -m app.scenarios validate ../scenarios/demo/service-situation.json
+python -m app.scenarios validate ../scenarios/demo/service-situation-v2.json
 ```
 
 Новый узел достижим и терминален, его ID не повторяется, destination таймаута
 остаётся отдельным. Из примера выше выполните создание сессии и только первый
-`advance`, заменив `choice_id` на `clarify`. Проверьте
+`advance`, заменив путь в `load_document` на новый файл, а `choice_id` на `clarify`. Проверьте
 `session.current_node_id == "clarified"` после этого решения.
 При публикации импортируйте новую версию обычным CLI. Существующие попытки
 продолжают использовать версию `1`; правки движка для новой ветки не нужны.
@@ -303,4 +306,59 @@ JSON round-trip и импорт домена без site-packages.
 Тесты этапа 5 дополнительно проверяют clamp, независимость показателей,
 повреждение журнала, закрепление политики и отклонение снимков формата 1.
 Серверные гонки и автоматические таймауты проверяются с PostgreSQL;
-UI прохождения и Playwright E2E ещё не добавлены.
+UI прохождения и Playwright E2E находятся в `frontend/`; полный путь до
+debrief проверяется как через Vite, так и через готовый Compose (см. README).
+
+## Sequence diagram: обработка decision
+
+```mermaid
+sequenceDiagram
+    actor User as Проводник
+    participant UI as React
+    participant API as FastAPI
+    participant Service as SessionService
+    participant DB as PostgreSQL
+    participant Engine as Pure engine
+    participant Worker as Timer worker
+    User->>UI: Выбрать действие
+    UI->>API: POST decision_id, node_id, choice_id, expected_sequence
+    API->>Service: Валидированная команда + владелец токена
+    Service->>DB: BEGIN, SELECT session FOR UPDATE
+    Service->>DB: clock_timestamp(), закреплённая версия сценария
+    Service->>Engine: Восстановить и проверить историю
+    opt Наступил deadline текущего узла
+        Service->>Engine: expire(now)
+        Engine-->>Service: Timeout outcome, новый узел, журнал
+        Service->>DB: Сохранить timeout; при финале — settlement
+    end
+    alt Точный повтор обработанной команды
+        Service->>Engine: advance проверяет совпадение исходной команды
+        Engine-->>Service: Текущее состояние, duplicate
+    else Timeout применён и команда новая
+        Service-->>Service: Отказать позднему выбору
+    else Новое допустимое решение
+        Service->>Engine: advance(command, now)
+        Engine-->>Service: Условия, эффекты, переход, журнал
+    else Недопустимая команда или конфликт reuse ID
+        Engine-->>Service: Отказ, выбор не применяется
+    end
+    Service->>DB: Сохранить изменения; при финале — settlement под lock профиля
+    Note over Service,DB: Reward уникален по session; unlock по профилю/достижению
+    Service->>DB: COMMIT
+    Service-->>API: Снимок / duplicate / конфликт с актуальным состоянием
+    API-->>UI: 200 или 409; серверное время и deadline
+    UI-->>User: Последствия и следующая сцена либо debrief
+    Note over Worker,DB: Независимо от браузера
+    Worker->>DB: Выбрать просроченные сессии FOR UPDATE SKIP LOCKED
+    Worker->>Engine: expire(now из БД)
+    Engine-->>Worker: Авторитетное состояние
+    Worker->>DB: Сохранить timeout и награду при финале; COMMIT
+```
+
+Ветка повтора возвращает нынешний снимок, а не старый ответ: следующие решения
+или timeout могли уже изменить сессию. Согласование timeout выполняется до
+классификации команды: тот же запрос может сохранить timeout и вернуть duplicate. Конфликтный reuse ID отклоняется.
+Если при отказе запроса наступил timeout, его результат всё равно сохраняется
+до ответа 409. Локальная транзакция не содержит внешних сетевых вызовов.
+Уведомления об unlock создаются по сохранённому событию при reconciliation,
+поэтому не входят в критический путь выбора.

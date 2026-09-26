@@ -1,4 +1,4 @@
-# REST API — этапы 6–9
+# REST API /api/v1
 
 ## Границы
 
@@ -7,7 +7,7 @@
 транзакциями и запросами, чистый домен — правилами переходов и баллов.
 
 - `/api/v1`: auth/demo, profiles, scenarios, sessions, decisions, results,
-  achievements, leaderboard, analytics и контракт HR/LMS.
+  achievements, leaderboard, analytics, challenges, notifications и контракт HR/LMS.
 - Demo-вход явно включается `DEMO_AUTH_ENABLED=true`. Доступен фиксированный
   список синтетических персон; непрозрачные bearer-токены действуют 24 часа,
   в PostgreSQL сохраняются только их SHA-256 хеши. Это не идентификация сотрудника.
@@ -47,7 +47,8 @@
 `http://127.0.0.1:8080`. Swagger UI — `http://127.0.0.1:8000/docs`,
 ReDoc — `/redoc`, машинная спецификация — `/openapi.json` на backend.
 
-Примените миграции и импортируйте demo-сценарии по README. Для demo-входа
+Полный Compose автоматически применяет миграции и импортирует demo-сценарии.
+Для локального backend выполните команды из README. Для demo-входа
 задайте `DEMO_AUTH_ENABLED=true`: Compose читает эту переменную из `.env`
 (она включена в `.env.example`), ручной backend — из своего окружения.
 При отсутствии флага вход отключён. В Swagger нажмите Authorize и вставьте
@@ -73,30 +74,33 @@ ReDoc — `/redoc`, машинная спецификация — `/openapi.json
 
 Все пути ниже начинаются с `/api/v1`.
 
-| Метод и путь | Назначение / ответ |
-| --- | --- |
-| POST `/auth/demo` | Необязательное тело persona_id; 200: access_token, token_type, expires_at, profile |
-| GET `/auth/demo/personas` | Фиксированный список синтетических персон и их подразделений |
-| GET `/auth/me` | Текущий профиль: id, display_name |
-| GET `/profiles/me` | Тот же профиль |
-| GET `/profiles/me/progress` | XP, уровень, организация, компетенции, прогресс достижений; опциональный session_id для награды попытки |
-| GET `/profiles/me/achievements` | Страница сохранённых разблокировок пользователя |
-| GET `/scenarios` | Страница версий: id, version, title, competency_ids |
-| GET `/scenarios/{scenario_id}/versions/{version}` | Полный строгий ScenarioDocument выбранной версии |
-| POST `/sessions` | Старт; обязательный Idempotency-Key, тело scenario_id + scenario_version |
-| GET `/sessions/{session_id}` | Актуальное состояние после согласования timeout |
-| POST `/sessions/{session_id}/decisions` | Принять решение или подтвердить его повтор |
-| GET `/sessions/{session_id}/decisions` | Страница истории решений в порядке принятия |
-| GET `/sessions/{session_id}/result` | Итог завершённой попытки и её снимок |
-| GET `/sessions/{session_id}/debrief` | Обучающая временная линия, шкалы, компетенции, альтернативы и рекомендации |
-| GET `/results` | Страница итогов завершённых попыток текущего пользователя |
-| GET `/achievements` | Страница определений с condition или behavior_rule |
-| GET `/leaderboard` | Лучшие завершённые попытки пользователей для версии сценария |
-| GET `/leaderboard/organization` | Рейтинг XP в scope=brigade/depot/company, limit/offset |
-| GET `/analytics/me` | Сводка сохранённых попыток текущего пользователя |
-| GET `/analytics/me/competencies` | Прогресс и наблюдения компетенций, повторяющиеся проблемы, статистика сценариев |
-| GET `/integrations/hr-lms/contract` | Публичное описание и JSON Schema будущего обмена |
-| POST `/integrations/hr-lms/training-results` | Публичная проверка контракта, затем 501 |
+| Метод и путь                                      | Назначение / ответ                                                                                      |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| POST `/auth/demo`                                 | Необязательное тело persona_id; 200: access_token, token_type, expires_at, profile                      |
+| GET `/auth/demo/personas`                         | Фиксированный список синтетических персон и их подразделений                                            |
+| GET `/auth/me`                                    | Текущий профиль: id, display_name                                                                       |
+| GET `/profiles/me`                                | Тот же профиль                                                                                          |
+| GET `/profiles/me/progress`                       | XP, уровень, организация, компетенции, прогресс достижений; опциональный session_id для награды попытки |
+| GET `/profiles/me/achievements`                   | Страница сохранённых разблокировок пользователя                                                         |
+| GET `/scenarios`                                  | Страница версий: id, version, title, competency_ids                                                     |
+| GET `/scenarios/{scenario_id}/versions/{version}` | Полный строгий ScenarioDocument выбранной версии                                                        |
+| POST `/sessions`                                  | Старт; обязательный Idempotency-Key, тело scenario_id + scenario_version                                |
+| GET `/sessions/{session_id}`                      | Актуальное состояние после согласования timeout                                                         |
+| POST `/sessions/{session_id}/decisions`           | Принять решение или подтвердить его повтор                                                              |
+| GET `/sessions/{session_id}/decisions`            | Страница истории решений в порядке принятия                                                             |
+| GET `/sessions/{session_id}/result`               | Итог завершённой попытки и её снимок                                                                    |
+| GET `/sessions/{session_id}/debrief`              | Обучающая временная линия, шкалы, компетенции, альтернативы и рекомендации                              |
+| GET `/results`                                    | Страница итогов завершённых попыток текущего пользователя                                               |
+| GET `/achievements`                               | Страница определений с condition или behavior_rule                                                      |
+| GET `/leaderboard`                                | Лучшие завершённые попытки пользователей для версии сценария                                            |
+| GET `/leaderboard/organization`                   | Рейтинг XP в scope=brigade/depot/company, limit/offset                                                  |
+| GET `/analytics/me`                               | Сводка сохранённых попыток текущего пользователя                                                        |
+| GET `/analytics/me/competencies`                  | Прогресс и наблюдения компетенций, повторяющиеся проблемы, статистика сценариев                         |
+| GET `/challenges`                                 | Персональный прогресс, сроки и состояния демо-челленджей                                                |
+| GET `/notifications`                              | Страница входящих, read/unread и история истёкших событий                                               |
+| PUT `/notifications/{notification_id}/read`       | Идемпотентное изменение состояния прочтения                                                             |
+| GET `/integrations/hr-lms/contract`               | Публичное описание и JSON Schema будущего обмена                                                        |
+| POST `/integrations/hr-lms/training-results`      | Публичная проверка контракта, затем 501                                                                 |
 
 Тела start/decision запрещают дополнительные поля и не приводят строки/boolean
 к числам. Идентификатор сценария соответствует схеме контента: до 64 символов,
@@ -154,16 +158,16 @@ acknowledged_decision_id. Повтор не начисляет баллы и в�
 }
 ```
 
-| HTTP | code |
-| --- | --- |
-| 401 | unauthorized; заголовок WWW-Authenticate: Bearer |
-| 404 | not_found, session_not_found, scenario_not_found, demo_auth_disabled |
-| 405 | method_not_allowed |
-| 409 | idempotency_conflict, decision_rejected, decision_timed_out, result_not_ready, domain_conflict |
-| 422 | validation_error; details содержит location/message/type, без сырых входных значений |
-| 500 | internal_error; без traceback |
-| 501 | integration_not_configured |
-| 503 | database_unavailable; без URL и учётных данных |
+| HTTP | code                                                                                           |
+| ---- | ---------------------------------------------------------------------------------------------- |
+| 401  | unauthorized; заголовок WWW-Authenticate: Bearer                                               |
+| 404  | not_found, session_not_found, scenario_not_found, demo_auth_disabled                           |
+| 405  | method_not_allowed                                                                             |
+| 409  | idempotency_conflict, decision_rejected, decision_timed_out, result_not_ready, domain_conflict |
+| 422  | validation_error; details содержит location/message/type, без сырых входных значений           |
+| 500  | internal_error; без traceback                                                                  |
+| 501  | integration_not_configured                                                                     |
+| 503  | database_unavailable; без URL и учётных данных                                                 |
 
 Несуществующие и чужие сессии одинаково дают 404. На ошибки решений клиент
 может отобразить data и продолжить с новым expected_sequence. Не повторяйте
@@ -225,8 +229,15 @@ GET `/leaderboard/organization?scope=brigade&limit=20&offset=0` возвраща
   "group_name": "Бригада 01",
   "assigned": true,
   "items": [
-    {"rank": 1, "employee_id": "demo-north-02", "display_name": "Учебный проводник 02",
-     "xp": 55, "level": 1, "completed_sessions": 1, "is_me": true}
+    {
+      "rank": 1,
+      "employee_id": "demo-north-02",
+      "display_name": "Учебный проводник 02",
+      "xp": 55,
+      "level": 1,
+      "completed_sessions": 1,
+      "is_me": true
+    }
   ],
   "total": 1,
   "limit": 20,
@@ -338,7 +349,6 @@ API-тесты: `tests/test_api_contract.py`, `tests/test_timed_api.py`,
 проверяют разбор, условия альтернатив, неизбежный timeout, пороги наблюдений,
 воспроизводимость и доступ только к собственной сохранённой истории.
 
-
 ## Этап 10: челленджи и внутренние уведомления
 
 Все запросы требуют BearerAuth. `limit` 1–100 (по умолчанию 20), `offset` ≥ 0.
@@ -360,7 +370,6 @@ API-тесты: `tests/test_api_contract.py`, `tests/test_timed_api.py`,
 после импорта новых сценариев. Окна не перезапускаются при повторе команды.
 Даты авторитетны на сервере; при `completed_at == expires_at` прохождение уже
 не засчитывается. Подробные критерии и доставка: [RETENTION.md](RETENTION.md).
-
 
 ## Ограничения безопасности (этап 11)
 

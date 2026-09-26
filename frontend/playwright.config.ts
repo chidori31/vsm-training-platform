@@ -1,5 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
+const deploymentURL = process.env.PLAYWRIGHT_BASE_URL;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -9,7 +11,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:5175",
+    baseURL: deploymentURL || "http://127.0.0.1:5175",
     viewport: { width: 1440, height: 1000 },
     reducedMotion: "reduce",
     channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
@@ -17,10 +19,12 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
-  webServer: {
-    command: "npm run dev -- --port 5175 --strictPort",
-    url: "http://127.0.0.1:5175",
-    reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
-  },
+  webServer: deploymentURL
+    ? undefined
+    : {
+        command: "npm run dev -- --port 5175 --strictPort",
+        url: "http://127.0.0.1:5175",
+        reuseExistingServer: !process.env.CI,
+        timeout: 30_000,
+      },
 });

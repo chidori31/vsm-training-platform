@@ -1,120 +1,107 @@
 # Доменная архитектура ВСМ
 
-## Статус и границы этапов 2–9
+## Назначение и границы
 
-Задание владельца на этап 2 задаёт обучающую платформу и EmployeeProfile.
-Для этого этапа выбран исходный учебный домен; прежнее противоречие с пассажирской
-геймификацией сохранено в истории BUILD_PLAN. Валюта «Вёрсты», ticketing,
-пассажирские профили и внешние интеграции не входят в эту архитектуру.
+Обучающий симулятор решений проводника. Продуктовый scope уточнён владельцем
+на этапе 2; [история первоначального противоречия](PRODUCT_SCOPE_HISTORY.md)
+сохранена. Пассажирская валюта, ticketing и реальная HR/LMS-интеграция отсутствуют.
 
-Реализованы независимые доменные типы, инварианты графа, ограниченная модель
-условий/эффектов и чистые вычисления scoring. Этап 3 добавляет JSON/Pydantic,
-хранение версий сценариев в JSONB, миграцию, CLI и три синтетических демо.
-Этап 4 реализует независимый движок прохождения, таймауты, историю,
-идемпотентные команды и восстановление JSON-снимка с повторным исполнением.
-Этап 5 добавляет отдельные Loyalty/Safety с границами и журналом изменений,
-сохранение сессий, HTTP API и worker автоматических таймаутов. Этап 6 добавляет
-версионированный API, demo auth, ownership, идемпотентный старт и read models.
-Этап 7 добавляет React Scenario Runner, восстановление команд через API-клиент
-и Playwright E2E. Этап 8 добавляет долговременный прогресс, XP, уровни, выдачу
-наград и экраны профиля/лидерборда. Этап 9 добавляет воспроизводимый разбор и
-аналитику компетенций по структурированным событиям. Production-аутентификация, продуктовая
-балансировка и доставка уведомлений остаются будущей работой.
+Реализованы пять JSON-сценариев, независимый движок, серверные таймеры,
+сохранение попыток, demo auth, игровой UI, награды, достижения, рейтинги,
+обучающий разбор, аналитика, challenges и внутренние уведомления.
+[Ограничения демо](LIMITATIONS.md) отделяют это от production-системы.
 
-## Компоненты и направление зависимостей
+## Component diagram
 
 ```mermaid
 flowchart LR
-    React[React Runner / Passport / Leaderboard] --> Client[API client and recovery]
-    Client --> API[FastAPI /api/v1]
-    API --> UseCases[SessionService]
-    API --> Identity[IdentityService]
-    API --> Queries[QueryService]
-    API --> Rewards[GamificationService / settlement]
-    API --> Learning[Learning read service]
-    Learning --> Sessions
-    Learning --> Debrief[Debrief / competency analytics]
-    UseCases --> Rewards
-    Rewards --> Facts[Reward ledger / unlocks]
-    Rewards --> Gamification[gamification rules]
-    Facts --> PG
-    Identity --> Profiles
-    Identity --> PG
-    Queries --> Sessions
-    Queries --> Analytics
-    Queries --> Achievements
-    Queries --> PG
-    Worker[Timer worker] --> UseCases
-    UseCases --> Engine[scenario engine]
-    UseCases --> Sessions[Session repository / SQLAlchemy]
-    Sessions --> Snapshots[Pydantic session snapshots]
-    Sessions --> SQL[Scenario repository / SQLAlchemy]
-    Sessions --> PG[(PostgreSQL JSONB)]
-    CLI[Scenario import CLI] --> Documents[Pydantic JSON documents]
-    Files[scenarios/demo JSON] --> Documents
-    CLI --> SQL
-    SQL --> Documents
-    SQL --> PG
-    Documents --> Graph[scenario graph]
-    Snapshots --> Engine
+    Browser[React: Runner / Debrief / Passport / Events] --> Proxy[Nginx / Vite proxy]
+    Proxy --> API[FastAPI /api/v1]
+    API --> Identity[Identity service]
+    API --> Sessions[Session service]
+    API --> Reads[Queries / learning / gamification]
+    API --> Retention[Retention service]
+    Worker[Timer worker] --> Sessions
+    Worker --> Retention
+    Sessions --> Rewards[Settlement]
+    Reads --> Rewards
+    Bootstrap[Bootstrap: Alembic / import / seed] --> PG
+    Files[scenarios/demo/*.json] --> Schema[Pydantic documents]
+    Bootstrap --> Schema
+    Schema --> Domain
+    Sessions --> Domain
+    Rewards --> Domain
+    Reads --> Domain
+    Retention --> Domain
+    Sessions --> Persistence[SQLAlchemy repositories / snapshots]
+    Rewards --> Persistence
+    Reads --> Persistence
+    Retention --> Persistence
+    Identity --> Persistence
+    Persistence --> PG[(PostgreSQL)]
     subgraph Domain[Pure Python domain]
-        Engine --> Gameplay[gameplay / session]
-        Engine --> Graph
-        Engine --> Rules[Declarative conditions]
-        Rules --> Scoring[scoring]
-        Scoring -. competency IDs .-> Competencies[competencies]
-        Profiles[profiles] --> Competencies
-        Achievements[achievements] --> Rules
-        Notifications[notifications]
-        Analytics[analytics] --> Gameplay
-        Gamification --> Gameplay
-        Gamification --> Scoring
-        Debrief --> Engine
-        Debrief --> Scoring
+        Engine[Scenario engine] --> Graph[Scenario graph / gameplay]
+        Engine --> Rules[Conditions / effects / scoring]
+        Gamification[XP / levels / achievements]
+        Learning[Debrief / competency analytics]
+        Challenges[Challenge eligibility]
     end
-    UseCases -.-> Profiles
-    UseCases -.-> Achievements
-    UseCases -.-> Notifications
-    UseCases -.-> Analytics
 ```
 
-Пунктир — будущая интеграция или ссылка по competency ID без зависимости
-от объекта каталога. `SessionService` владеет транзакцией и использует
-SQLAlchemy-репозитории снаружи домена. Отдельных универсальных ports/unit-of-work
-абстракций пока нет. Версии сценариев читают CLI и сервис сессий; хранение
-demo-профилей, определений наград и разблокировок добавлено на этапе 6.
-Хранение уведомлений — будущая работа. Начисление наград добавлено на этапе 8.
-Существующий `app/db.py` обслуживает readiness инфраструктуры и не импортируется
-доменом. Внутри `app/domain/` допустима только стандартная библиотека Python.
-FastAPI/Pydantic DTO и SQLAlchemy записи находятся снаружи и преобразуются
-в доменные значения на границе. React не исполняет авторитетные правила.
+`app/domain/` использует только стандартную библиотеку Python. Время и ID
+передаются извне; домен не знает HTTP, ORM, React, окружения и системных часов.
+Pydantic валидирует внешние документы/снимки, application services владеют
+транзакциями и используют SQLAlchemy. Универсальные ports/unit-of-work
+абстракции пока не выделены. Readiness `app/db.py` не импортируется доменом.
 
-Интерфейс показывает серверный снимок целиком. Сохранённая в sessionStorage команда
-содержит только намерение пользователя и идентификатор повтора. Клиентский отсчёт
-не завершает узел и не начисляет баллы. Представление демо-реплик отделено от правил;
-новые ветки используют текст JSON без изменения React. Подробности —
-в [SCENARIO_RUNNER.md](SCENARIO_RUNNER.md).
+React показывает серверный снимок и отправляет намерение: node/choice/decision ID
+и ожидаемую ревизию. API не принимает клиентские loyalty/safety/XP/время.
+Сохранённая в sessionStorage команда позволяет безопасно повторить запрос
+после обрыва. Отсчёт браузера информационный, timeout фиксирует сервер.
+Тексты новых веток берутся из JSON без изменения React.
+
+## Запуск и хранение
+
+Compose поднимает PostgreSQL 17, одноразовый bootstrap, FastAPI, отдельный
+worker и Nginx с собранным React. Bootstrap ждёт readiness БД, применяет Alembic,
+валидирует/импортирует JSON и публикует два синтетических челленджа. Backend
+и worker ждут успешного завершения bootstrap. Nginx ждёт `/ready` backend.
+Все host-порты loopback; они настраиваются отдельно от внутренних портов сервисов.
+
+Сценарии монтируются read-only. Версии JSON, снимки сессий с историей, профили,
+хеши токенов, ключи старта, reward ledger, определения/разблокировки достижений,
+челленджи и уведомления сохраняются в PostgreSQL. Единственный том — данные БД;
+пересборка контейнеров не сбрасывает прогресс. Повторный импорт не переписывает
+версию, seed не продлевает кампанию. Это локальный single-database deployment.
+
+Решение: блокировка строки сессии → время БД → восстановление истории →
+проверка timeout/choice → новый снимок → однократная награда при завершении → commit.
+Worker использует `SKIP LOCKED`; один переход выигрывает гонку. Уникальные ключи
+защищают повторные старт, reward и unlock. Уведомления формируются по сохранённым
+фактам отдельно, с дедупликацией; задержка worker до минуты допустима,
+GET входящих восстанавливает пропущенные события.
+[Sequence diagram](SCENARIO_ENGINE.md#sequence-diagram-обработка-decision).
 
 ## Модули и сущности
 
-| Модуль          | Типы                                          | Ответственность                                           |
-| --------------- | --------------------------------------------- | --------------------------------------------------------- |
-| `scenario`      | Scenario, ScenarioNode, Choice                | Версионируемый граф, ссылки, таймер и исход таймаута      |
-| `engine`        | Чистые функции start/advance/expire и запросы | Переходы, повторы, таймауты и проверка истории            |
-| `gameplay`      | ScenarioSession, Decision, SessionStatus      | Снимок прохождения и запись принятого решения             |
-| `scoring`       | MetricRef, ScoreState, AddScore, ScoreBounds, ScoringPolicy, ScoreChange | Независимые показатели, clamp и журнал изменений |
-| `rules`         | Predicate, Condition                          | Ограниченные сравнения и ALL/ANY                          |
-| `competencies`  | Competency, CompetencyProgress                | Каталог компетенций и накопленные баллы                   |
-| `profiles`      | EmployeeProfile                               | Идентификатор сотрудника и прогресс компетенций           |
-| `achievements`  | Achievement, AchievementUnlock                | Правило достижения и факт выдачи                          |
-| `gamification`  | RewardFact, Progress, BehaviorAchievement     | Награда завершённой попытки, XP, уровень и поведенческий прогресс |
-| `notifications` | Notification                                  | Сообщение получателю, время создания/прочтения            |
-| `analytics`     | SessionSummary                                | Чистая сводка снимка сессии, без записи и внешних вызовов |
+| Модуль          | Типы                                                                     | Ответственность                                                   |
+| --------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| `scenario`      | Scenario, ScenarioNode, Choice                                           | Версионируемый граф, ссылки, таймер и исход таймаута              |
+| `engine`        | Чистые функции start/advance/expire и запросы                            | Переходы, повторы, таймауты и проверка истории                    |
+| `gameplay`      | ScenarioSession, Decision, SessionStatus                                 | Снимок прохождения и запись принятого решения                     |
+| `scoring`       | MetricRef, ScoreState, AddScore, ScoreBounds, ScoringPolicy, ScoreChange | Независимые показатели, clamp и журнал изменений                  |
+| `rules`         | Predicate, Condition                                                     | Ограниченные сравнения и ALL/ANY                                  |
+| `competencies`  | Competency, CompetencyProgress                                           | Каталог компетенций и накопленные баллы                           |
+| `profiles`      | EmployeeProfile                                                          | Идентификатор сотрудника и прогресс компетенций                   |
+| `achievements`  | Achievement, AchievementUnlock                                           | Правило достижения и факт выдачи                                  |
+| `gamification`  | RewardFact, Progress, BehaviorAchievement                                | Награда завершённой попытки, XP, уровень и поведенческий прогресс |
+| `notifications` | Notification                                                             | Сообщение получателю, время создания/прочтения                    |
+| `analytics`     | SessionSummary                                                           | Чистая сводка снимка сессии, без записи и внешних вызовов         |
 
 Идентификаторы — непустые строки. Primary key защищает ID сохранённых сессий;
 ID решений уникальны внутри истории попытки, что проверяется под блокировкой
 строки. Награда уникальна по session_id, разблокировка — по профилю и версии
-достижения. Постоянное хранилище уведомлений ещё не реализовано.
+достижения. Уведомления хранятся с уникальным ключом получателя/события, read_at и expires_at.
 Ссылки на profile/session/achievement не означают
 наличие ORM relationship. Типы — frozen dataclasses; коллекции копируются
 в tuple или read-only mapping, чтобы внешнее изменение не меняло снимок.
@@ -321,7 +308,8 @@ FK `(scenario_id, scenario_version)`, `revision`, `state`, `deadline`, JSONB `sn
 Повреждённая сессия протоколируется и пропускается в текущем проходе;
 ошибка БД приводит к повторной попытке на следующем опросе.
 
-Outbox и доставка событий ещё не реализованы. Награды и прогресс профиля
+Внешний outbox и доставка провайдерам не реализованы. Внутренние уведомления
+сверяются по сохранённым событиям; награды и прогресс профиля
 добавлены на этапе 8 и не требуют внешней очереди.
 Уникальность сохранённого AchievementUnlock —
 `(employee_id, achievement_id, achievement_version)`. API v1 получает employee_id из demo-токена и проверяет
@@ -429,3 +417,17 @@ v2, проверенном повторным исполнением по неи
 Frontend отображает временную линию, причины изменения шкал и доступные варианты
 с рекомендацией, а в паспорте — журнал развития компетенций и статистику попыток.
 Данные обновляются через авторизованный клиент; смена персоны отменяет старые чтения.
+
+## Retention и hardening
+
+`app/domain/retention.py` проверяет окно challenge и пригодность попытки по
+серверным событиям; `app/application/retention.py` строит прогресс и inbox.
+Таблицы `challenges`, `challenge_scenarios`, `notifications` введены миграцией
+20260926_05. Уникальность `(employee_id, event_key)` защищает повторную сверку;
+прочтение принадлежит пользователю. [Правила retention](RETENTION.md).
+
+Миграция 20260926_06 добавляет ограничения согласованности JSON-снимка сессии,
+ревизии и истории, типов reward-фактов/границ XP и формата хеша токена.
+API ограничивает тело 64 KiB и не отдаёт traceback клиенту. Request/response DTO
+и frontend parser проверяют контракт, но авторитетные правила исполняются
+исключительно в backend. [Границы защиты](../SECURITY.md).
