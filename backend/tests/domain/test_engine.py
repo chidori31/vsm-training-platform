@@ -124,7 +124,7 @@ def choose(scenario, session, choice_id, *, seconds=1, **kwargs):
     [
         (("listen", "agree"), "success", (2, 2, 1)),
         (("listen", "fallback"), "neutral", (1, 0, 1)),
-        (("blame",), "tension", (-2, -1, 0)),
+        (("blame",), "tension", (0, 0, 0)),
     ],
 )
 def test_three_distinct_branches_have_real_effects_and_history(
@@ -251,7 +251,9 @@ def test_timeout_boundary_and_manual_timeout_choice_rejected(scenario):
         decision_id="t1",
         now=NOW + timedelta(seconds=10),
     )
-    assert expired.current_node_id == "expired" and expired.scores.value(SAFETY) == -3
+    assert expired.current_node_id == "expired" and expired.scores.value(SAFETY) == 0
+    assert expired.decisions[0].score_changes[0].requested_delta == -3
+    assert expired.decisions[0].score_changes[0].applied_delta == 0
     assert expired.decisions[0].choice_id == "deadline-event"
     assert expired.completed_at == NOW + timedelta(seconds=10)
     assert (
@@ -513,5 +515,7 @@ def test_timeout_retry_after_later_progress_uses_original_node_identity():
         decision_id="timeout",
         now=NOW + timedelta(seconds=100),
     )
-    assert retry == completed and retry.scores.value(SAFETY) == -1
+    assert retry == completed and retry.scores.value(SAFETY) == 0
+    assert retry.decisions[0].score_changes[0].requested_delta == -1
+    assert retry.decisions[0].score_changes[0].applied_delta == 0
     assert len(retry.decisions) == 2

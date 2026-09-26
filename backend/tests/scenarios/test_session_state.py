@@ -115,7 +115,7 @@ def test_halfway_snapshot_continues_like_uninterrupted_session(snapshot_scenario
     assert restored.scores.value(COMMUNICATION) == 3
     assert restored.decisions[0].explanation == "Спокойный ответ помогает пассажиру."
     assert finish(snapshot_scenario, restored) == finish(snapshot_scenario, session)
-    assert json.loads(raw)["format_version"] == 1
+    assert json.loads(raw)["format_version"] == 2
 
 
 def test_completed_snapshot_retains_history_and_completion(snapshot_scenario):
@@ -198,7 +198,7 @@ def test_duplicate_metric_entries_are_rejected(snapshot_scenario, field):
 @pytest.mark.parametrize(
     "path,value",
     [
-        (("format_version",), 2),
+        (("format_version",), 3),
         (("format_version",), True),
         (("format_version",), 1.0),
         (("format_version",), "1"),
@@ -236,7 +236,9 @@ def test_snapshot_rejects_wrong_scalars_and_extra_fields(
         load_session(snapshot_scenario, json.dumps(payload))
 
 
-@pytest.mark.parametrize("field", ["format_version", "initial_scores", "decisions"])
+@pytest.mark.parametrize(
+    "field", ["format_version", "initial_scores", "decisions", "scoring_policy"]
+)
 def test_snapshot_requires_replay_fields(snapshot_scenario, field):
     from app.scenarios.session_state import dump_session, load_session
 
@@ -246,7 +248,7 @@ def test_snapshot_requires_replay_fields(snapshot_scenario, field):
         load_session(snapshot_scenario, json.dumps(payload))
 
 
-@pytest.mark.parametrize("duplicate", ['"format_version": 1', '"delta": 2'])
+@pytest.mark.parametrize("duplicate", ['"format_version": 2', '"delta": 2'])
 def test_duplicate_json_keys_are_rejected_at_every_depth(snapshot_scenario, duplicate):
     from app.scenarios.session_state import dump_session, load_session
 
@@ -276,4 +278,137 @@ def test_loading_completed_snapshot_requires_exact_completion_time(snapshot_scen
     payload = json.loads(dump_session(snapshot_scenario, completed))
     payload["completed_at"] = "2026-09-26T09:00:05Z"
     with pytest.raises(ValueError):
+        load_session(snapshot_scenario, json.dumps(payload))
+
+
+def test_snapshot_pins_bounds_and_actual_change_journal(snapshot_scenario):
+    from app.domain.engine import advance, start_session
+    from app.domain.scoring import ScoreBounds, ScoringPolicy
+    from app.scenarios.session_state import dump_session, load_session
+
+    policy = ScoringPolicy(ScoreBounds(0, 51), ScoreBounds(20, 60))
+    session = start_session(
+        snapshot_scenario,
+        session_id="s",
+        employee_id="e",
+        now=STARTED_AT,
+        initial_scores=ScoreState({LOYALTY: 50, SAFETY: 60, COMMUNICATION: 0}),
+        scoring_policy=policy,
+    )
+    changed = advance(
+        snapshot_scenario,
+        session,
+        node_id="Start / 1",
+        choice_id="Stay calm!",
+        decision_id="d",
+        expected_sequence=0,
+        now=STARTED_AT + timedelta(seconds=1),
+    )
+    raw = dump_session(snapshot_scenario, changed)
+    payload = json.loads(raw)
+    assert payload["scoring_policy"] == {
+        "loyalty": {"minimum": 0, "maximum": 51},
+        "safety": {"minimum": 20, "maximum": 60},
+    }
+    assert payload["decisions"][0]["score_changes"] == [
+        {
+            "metric": "passenger_loyalty",
+            "competency_id": None,
+            "before": 50,
+            "requested_delta": 2,
+            "after": 51,
+            "applied_delta": 1,
+            "explanation": "Спокойный ответ помогает пассажиру.",
+        },
+        {
+            "metric": "competency",
+            "competency_id": "Коммуникация с пассажирами",
+            "before": 0,
+            "requested_delta": 3,
+            "after": 3,
+            "applied_delta": 3,
+            "explanation": "Спокойный ответ помогает пассажиру.",
+        },
+    ]
+    restored = load_session(snapshot_scenario, raw)
+    assert restored == changed
+    assert restored.decisions[0].score_changes[0].applied_delta == 1
+    completed = finish(snapshot_scenario, restored)
+    assert completed.scores.value(SAFETY) == 60
+    assert completed.decisions[1].score_changes[0].applied_delta == 0
+    completed_raw = dump_session(snapshot_scenario, completed)
+    assert (
+        json.loads(completed_raw)["decisions"][1]["score_changes"][0]["applied_delta"]
+        == 0
+    )
+    assert load_session(snapshot_scenario, completed_raw) == completed
+    assert finish(snapshot_scenario, changed) == completed
+    assert dump_session(snapshot_scenario, restored) == raw
+
+
+@pytest.mark.parametrize(
+    "path,value",
+    [
+        (("scoring_policy", "loyalty", "maximum"), 51),
+        (("scoring_policy", "safety", "minimum"), 70),
+        (("scoring_policy", "loyalty", "minimum"), True),
+        (("scoring_policy", "loyalty", "maximum"), "100"),
+        (("scoring_policy", "safety", "maximum"), 100.0),
+        (("scoring_policy", "loyalty", "unexpected"), 0),
+        (("scoring_policy", "unexpected"), 0),
+        (("decisions", 0, "score_changes"), []),
+        (("decisions", 0, "score_changes", 0, "before"), 49),
+        (("decisions", 0, "score_changes", 0, "requested_delta"), 3),
+        (("decisions", 0, "score_changes", 0, "after"), 53),
+        (("decisions", 0, "score_changes", 0, "explanation"), "Forged"),
+        (("decisions", 0, "score_changes", 0, "before"), True),
+        (("decisions", 0, "score_changes", 0, "after"), "52"),
+        (("decisions", 0, "score_changes", 0, "applied_delta"), True),
+        (("decisions", 0, "score_changes", 0, "applied_delta"), "2"),
+        (("decisions", 0, "score_changes", 0, "applied_delta"), 2.0),
+    ],
+)
+def test_snapshot_rejects_invalid_policy_or_journal(snapshot_scenario, path, value):
+    from app.scenarios.session_state import dump_session, load_session
+
+    payload = json.loads(dump_session(snapshot_scenario, halfway(snapshot_scenario)))
+    target = payload
+    for part in path[:-1]:
+        target = target[part]
+    target[path[-1]] = value
+    with pytest.raises(ValueError):
+        load_session(snapshot_scenario, json.dumps(payload))
+
+
+def test_snapshot_requires_decision_change_journal(snapshot_scenario):
+    from app.scenarios.session_state import dump_session, load_session
+
+    payload = json.loads(dump_session(snapshot_scenario, halfway(snapshot_scenario)))
+    del payload["decisions"][0]["score_changes"]
+    with pytest.raises(ValueError):
+        load_session(snapshot_scenario, json.dumps(payload))
+
+
+def test_snapshot_rejects_actual_delta_inconsistent_with_before_and_after(
+    snapshot_scenario,
+):
+    from app.scenarios.session_state import dump_session, load_session
+
+    payload = json.loads(dump_session(snapshot_scenario, halfway(snapshot_scenario)))
+    payload["decisions"][0]["score_changes"][0]["applied_delta"] = 3
+    with pytest.raises(ValueError, match="applied_delta must equal after - before"):
+        load_session(snapshot_scenario, json.dumps(payload))
+
+
+def test_v1_snapshot_is_rejected_without_reclamping_or_fabricating_history(
+    snapshot_scenario,
+):
+    from app.scenarios.session_state import dump_session, load_session
+
+    payload = json.loads(dump_session(snapshot_scenario, halfway(snapshot_scenario)))
+    payload["format_version"] = 1
+    payload.pop("scoring_policy", None)
+    for decision in payload["decisions"]:
+        decision.pop("score_changes", None)
+    with pytest.raises(ValueError, match="version 1.*scoring policy.*journal"):
         load_session(snapshot_scenario, json.dumps(payload))

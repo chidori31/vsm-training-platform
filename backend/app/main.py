@@ -4,9 +4,11 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from app.api.sessions import router as sessions_router
 from app.db import database_available
 
 app = FastAPI(title="VSM Platform API", version="0.1.0")
+app.include_router(sessions_router)
 
 
 class HealthResponse(BaseModel):

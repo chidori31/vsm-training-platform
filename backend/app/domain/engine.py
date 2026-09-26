@@ -6,7 +6,9 @@ from datetime import datetime, timedelta
 from .common import DomainError, require_integer, require_text, utc_time
 from .gameplay import Decision, ScenarioSession, SessionStatus
 from .scenario import Choice, Scenario, ScenarioNode
-from .scoring import Metric, MetricRef, ScoreState, apply_effects
+from .scoring import Metric, MetricRef, ScoreState, ScoringPolicy, apply_scored_effects
+
+_DEFAULT_SCORING_POLICY = ScoringPolicy()
 
 
 def start_session(
@@ -16,6 +18,7 @@ def start_session(
     employee_id: str,
     initial_scores: ScoreState,
     now: datetime,
+    scoring_policy: ScoringPolicy = _DEFAULT_SCORING_POLICY,
 ) -> ScenarioSession:
     required = {MetricRef(Metric.PASSENGER_LOYALTY), MetricRef(Metric.SAFETY_RATING)}
     required.update(
@@ -28,6 +31,12 @@ def start_session(
         raise DomainError(
             "Initial metrics must match loyalty, safety and declared competencies"
         )
+    if not isinstance(scoring_policy, ScoringPolicy):
+        raise DomainError("Expected ScoringPolicy")
+    for metric, value in initial_scores.values.items():
+        bounds = scoring_policy.bounds_for(metric)
+        if bounds is not None and not bounds.minimum <= value <= bounds.maximum:
+            raise DomainError("Initial score is outside its scoring policy bounds")
     timestamp = utc_time(now, "now")
     terminal = scenario.node(scenario.start_node_id).terminal
     return ScenarioSession(
@@ -38,6 +47,7 @@ def start_session(
         current_node_id=scenario.start_node_id,
         scores=initial_scores,
         initial_scores=initial_scores,
+        scoring_policy=scoring_policy,
         started_at=timestamp,
         status=SessionStatus.COMPLETED if terminal else SessionStatus.ACTIVE,
         completed_at=timestamp if terminal else None,
@@ -103,7 +113,12 @@ def _transition(
         raise DomainError("Unknown choice for the current node")
     if not choice.condition.matches(session.scores):
         raise DomainError("Choice condition is not satisfied")
-    scores = apply_effects(session.scores, choice.effects)
+    scores, score_changes = apply_scored_effects(
+        session.scores,
+        choice.effects,
+        policy=session.scoring_policy,
+        explanation=choice.explanation,
+    )
     destination = scenario.node(choice.target_node_id)
     decision = Decision(
         id=decision_id,
@@ -114,6 +129,7 @@ def _transition(
         decided_at=timestamp,
         effects=choice.effects,
         explanation=choice.explanation,
+        score_changes=score_changes,
     )
     return replace(
         session,
@@ -141,6 +157,7 @@ def restore_session(scenario: Scenario, session: ScenarioSession) -> ScenarioSes
         session_id=session.id,
         employee_id=session.employee_id,
         initial_scores=session.initial_scores,
+        scoring_policy=session.scoring_policy,
         now=session.started_at,
     )
     for recorded in session.decisions:
@@ -157,7 +174,8 @@ def restore_session(scenario: Scenario, session: ScenarioSession) -> ScenarioSes
         )
         if restored.decisions[-1] != recorded:
             raise DomainError(
-                "Recorded decision differs from scenario effects or explanation"
+                "Recorded decision differs from scenario effects, "
+                "explanation or journal"
             )
     if restored != session:
         raise DomainError("Saved session state differs from replayed history")

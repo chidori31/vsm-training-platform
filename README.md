@@ -12,9 +12,14 @@
 хранение их версий в PostgreSQL JSONB и Alembic-миграция. На этапе 4 реализован
 чистый нелинейный движок: начало попытки, условия и эффекты, переходы,
 таймауты, история, идемпотентные повторы и проверяемое восстановление JSON-снимка.
-Публичный интерфейс, Mermaid state machine и запускаемый пример — в
-[SCENARIO_ENGINE.md](docs/SCENARIO_ENGINE.md). API прохождения,
-хранение сессий в БД, игровой интерфейс и интеграции ещё не реализованы.
+На этапе 5 добавлены независимые Loyalty/Safety с границами и журналом изменений,
+хранение сессий в PostgreSQL, минимальный API прохождения и отдельный worker,
+который сохраняет таймауты даже без запросов браузера. Решения и таймауты
+согласуются под блокировкой строки с серверным временем БД.
+Контракт движка и запускаемый пример — в
+[SCENARIO_ENGINE.md](docs/SCENARIO_ENGINE.md), правила баллов, API и работа
+таймера — в [GAME_MECHANICS.md](docs/GAME_MECHANICS.md).
+Игровой интерфейс, аутентификация, долговременный прогресс и интеграции ещё не реализованы.
 Следующий этап не начинается автоматически.
 
 ## Scope этапа 2
@@ -54,7 +59,8 @@ Achievements, Loyalty Program, HR/LMS integration и ticketing integration.
 - `scenarios/` — JSON Schema, три демо и [инструкция формата](scenarios/README.md).
 - `docs/BUILD_PLAN.md` — архитектура, границы и этапы разработки.
 - `docs/SCENARIO_ENGINE.md` — контракт движка, восстановление и добавление ветки.
-- `compose.yaml` — PostgreSQL, backend и frontend для локального запуска.
+- `docs/GAME_MECHANICS.md` — баллы, журнал, серверный таймер и API прохождения.
+- `compose.yaml` — PostgreSQL, backend, timer-worker и frontend для локального запуска.
 
 ## Зависимости
 
@@ -86,6 +92,19 @@ OpenAPI: <http://127.0.0.1:8000/docs>.
 кодировать. Backend не загружает `.env` автоматически; Compose загружает его.
 `GET /ready` возвращает `{"status":"ready"}` после успешного `SELECT 1`.
 
+После настройки БД примените миграции из `backend/`: `alembic upgrade head`.
+Импортируйте демо командой `python -m app.scenarios import ../scenarios/demo`.
+В отдельном терминале с тем же virtualenv и `DATABASE_URL` запустите worker:
+
+```sh
+python -m app.worker
+```
+
+`TIMER_POLL_SECONDS` задаёт положительный интервал опроса в секундах (по умолчанию
+`1`). Worker необходим для автоматических переходов без HTTP-запросов.
+Срок хранится в БД; после перезапуска worker обработает просроченные попытки.
+Примеры API и семантика задержек — в [GAME_MECHANICS.md](docs/GAME_MECHANICS.md).
+
 ## Frontend локально
 
 В отдельном терминале из корня:
@@ -110,15 +129,17 @@ Vite проксирует `/api/health` в `http://127.0.0.1:8000/health`.
 
 ```sh
 docker compose config --quiet
-docker compose up --build -d --wait
+docker compose up --build -d db backend
 docker compose exec backend alembic upgrade head
+docker compose up --build -d --wait
 ```
 
 Приложение: <http://localhost:8080>, backend: <http://localhost:8000/health>,
 готовность БД: <http://localhost:8000/ready>. Порты привязаны к loopback.
 Compose передаёт пароль БД отдельно через `PGPASSWORD`, без сборки URL.
 Корневой `DATABASE_URL` используется только при ручном локальном запуске.
-Миграция создаёт `scenario_versions`; демо импортируются отдельной командой:
+Миграции создают `scenario_versions` и `scenario_sessions`; worker запускается
+после применения схемы. Демо импортируются отдельной командой:
 
 ```sh
 docker compose exec backend python -m app.scenarios validate /scenarios/demo
@@ -163,7 +184,7 @@ docker compose run --rm --no-deps --user root -e TEST_DATABASE_URL=postgresql+ps
 ```
 
 Это временный контейнер проверки. Каждый PostgreSQL-тест создаёт отдельную
-случайную схему `test_scenarios_*` и удаляет только её; пользователю БД нужно
+случайную тестовую схему и удаляет только её; пользователю БД нужно
 право CREATE SCHEMA. Рабочие таблицы не очищаются. Локально можно задать
 `TEST_DATABASE_URL` в окружении и выполнить `pytest -m postgres` из backend.
 
@@ -171,7 +192,10 @@ docker compose run --rm --no-deps --user root -e TEST_DATABASE_URL=postgresql+ps
 реальное соединение с PostgreSQL. Домен отдельно проверяется через
 `pytest tests/domain`: условия, эффекты, граф, снимки сессий и импорт без
 site-packages. Тесты движка проверяют ветвление, условия, таймеры, повторы,
-устаревшие команды и восстановление истории; JSON-снимки — в `tests/scenarios`.
+устаревшие команды, независимые показатели, clamp и журнал изменений;
+JSON-снимки — в `tests/scenarios`. PostgreSQL-проверки этапа 5 покрывают
+сохранение сессий, автоматический worker, гонки выбора с таймаутом и двойную
+отправку. HTTP-тесты проверяют контракт и запрет клиентского времени/баллов.
 Playwright предусмотрен для будущих E2E на этапе игрового UI.
 
 Не сохраняйте `.env`, ключи, пароли или персональные данные в Git.

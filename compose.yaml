@@ -43,6 +43,21 @@ services:
       timeout: 5s
       retries: 10
 
+  timer-worker:
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    environment:
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB:-vsm}
+      PGUSER: ${POSTGRES_USER:-vsm}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      DATABASE_URL: postgresql+psycopg:///
+      TIMER_POLL_SECONDS: ${TIMER_POLL_SECONDS:-1}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
   frontend:
     build:
       context: .
