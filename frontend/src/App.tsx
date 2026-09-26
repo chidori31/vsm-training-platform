@@ -56,8 +56,7 @@ export default function App() {
         для новых скоростей
       </h1>
       <p className="intro">
-        Проверяем связь между приложением и сервером. Назначение продукта и
-        целевая аудитория уточняются.
+        Проверяем связь между приложением и сервером обучающей платформы ВСМ.
       </p>
       <section aria-labelledby="connection-title">
         <h2 id="connection-title">Подключение к платформе</h2>
@@ -86,8 +85,8 @@ export default function App() {
         </button>
       </section>
       <footer>
-        PRODUCT SCOPE — pending clarification. Продуктовый scope не
-        зафиксирован.
+        Доменная архитектура подготовлена. Интерфейс прохождения — следующий
+        этап.
       </footer>
     </main>
   );
