@@ -8,6 +8,7 @@ from app.persistence import (  # noqa: F401
     achievements,
     gamification,
     identity,
+    retention,
     scenarios,
     sessions,
 )

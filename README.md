@@ -37,6 +37,10 @@
 повторяющихся трудностей и прохождений. Выводы вычисляются локальными правилами
 из сохранённых структурированных событий; runtime LLM не используется.
 Методика и ограничения — в [DEBRIEF_ANALYTICS.md](docs/DEBRIEF_ANALYTICS.md).
+Этап 10: экран «События», суточный и недельный челленджи, две новые учебные
+ситуации и внутренние уведомления о контенте, заданиях и достижениях.
+Сроки серверные; read/unread и история сохраняются. Правила и публикация —
+в [RETENTION.md](docs/RETENTION.md).
 Production-аутентификация, продуктовая балансировка и реальные интеграции
 ещё не реализованы.
 Следующий этап не начинается автоматически.
@@ -75,7 +79,7 @@ Achievements, Loyalty Program, HR/LMS integration и ticketing integration.
 - `backend/` — FastAPI, Pydantic, SQLAlchemy, Alembic, pytest;
   `app/domain/` — типы и правила только на стандартной библиотеке Python.
 - `infra/` — Nginx, проксирующий `/api/` в backend.
-- `scenarios/` — JSON Schema, три демо и [инструкция формата](scenarios/README.md).
+- `scenarios/` — JSON Schema, пять демо и [инструкция формата](scenarios/README.md).
 - `docs/BUILD_PLAN.md` — архитектура, границы и этапы разработки.
 - `docs/SCENARIO_ENGINE.md` — контракт движка, восстановление и добавление ветки.
 - `docs/GAME_MECHANICS.md` — баллы, журнал и серверный таймер.
@@ -124,6 +128,7 @@ OpenAPI: <http://127.0.0.1:8000/docs>.
 
 После настройки БД примените миграции из `backend/`: `alembic upgrade head`.
 Импортируйте демо командой `python -m app.scenarios import ../scenarios/demo`.
+Опубликуйте демо-челленджи: `python -m app.retention_seed` (повтор не продлевает сроки).
 В отдельном терминале с тем же virtualenv и `DATABASE_URL` запустите worker:
 
 ```sh
@@ -133,6 +138,8 @@ python -m app.worker
 `TIMER_POLL_SECONDS` задаёт положительный интервал опроса в секундах (по умолчанию
 `1`). Worker необходим для автоматических переходов без HTTP-запросов.
 Срок хранится в БД; после перезапуска worker обработает просроченные попытки.
+Раз в минуту тот же worker формирует внутренние уведомления; GET входящих
+также восстанавливает актуальные события. Внешних провайдеров доставки нет.
 Семантика задержек — в [GAME_MECHANICS.md](docs/GAME_MECHANICS.md),
 маршруты и пример прохождения — в [API.md](docs/API.md).
 
@@ -181,6 +188,7 @@ Compose передаёт пароль БД отдельно через `PGPASSWO
 ```sh
 docker compose exec backend python -m app.scenarios validate /scenarios/demo
 docker compose exec backend python -m app.scenarios import /scenarios/demo
+docker compose exec backend python -m app.retention_seed
 ```
 
 Каталог `scenarios/` подключён к backend только для чтения. Повторный импорт

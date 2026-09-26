@@ -185,11 +185,11 @@ def test_duplicate_json_keys_and_malformed_input_rejected(tmp_path, document):
         load_document(path)
 
 
-def test_all_three_synthetic_demos_are_valid():
+def test_all_synthetic_demos_are_valid():
     from app.scenarios.loader import load_document
 
     paths = sorted((Path(__file__).parents[3] / "scenarios" / "demo").glob("*.json"))
-    assert len(paths) == 3
+    assert len(paths) == 5
     for path in paths:
         document = load_document(path)
         assert document.id.startswith("demo-")

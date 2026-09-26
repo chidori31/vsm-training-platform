@@ -5,10 +5,15 @@ import {
   scenarioTitle,
   scenePresentation,
 } from "./runner/sceneContent";
-import type { Decision, SessionSnapshot } from "./runner/types";
+import type {
+  Decision,
+  ScenarioSummary,
+  SessionSnapshot,
+} from "./runner/types";
 import { useScenarioRunner } from "./runner/useScenarioRunner";
 import { CareerPanel, CompletionReward } from "./career/CareerPanel";
 import { Debrief } from "./learning/Debrief";
+import { RetentionPanel } from "./retention/RetentionPanel";
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
   return (
@@ -150,17 +155,26 @@ function RouteLine({ session }: { session: SessionSnapshot }) {
 
 export default function App() {
   const runner = useScenarioRunner();
-  const [screen, setScreen] = useState<"play" | "profile" | "leaderboard">(
-    "play",
-  );
+  const [screen, setScreen] = useState<
+    "play" | "profile" | "leaderboard" | "events"
+  >("play");
   const [selectedId, setSelectedId] = useState("");
+  const [eventScenario, setEventScenario] = useState<ScenarioSummary | null>(
+    null,
+  );
+  const catalog =
+    eventScenario &&
+    !runner.catalog.some(
+      (item) =>
+        item.id === eventScenario.id && item.version === eventScenario.version,
+    )
+      ? [...runner.catalog, eventScenario]
+      : runner.catalog;
   const heading = useRef<HTMLHeadingElement>(null);
   const selected =
-    runner.catalog.find(
-      (item) => `${item.id}:${item.version}` === selectedId,
-    ) ??
-    runner.catalog.find((item) => item.id === "demo-passenger-conflict") ??
-    runner.catalog[0];
+    catalog.find((item) => `${item.id}:${item.version}` === selectedId) ??
+    catalog.find((item) => item.id === "demo-passenger-conflict") ??
+    catalog[0];
   const state = runner.state;
   const session = state?.session;
   const completed = session?.status === "completed";
@@ -245,6 +259,13 @@ export default function App() {
             >
               Рейтинг
             </button>
+            <button
+              disabled={!runner.identity || runner.busy}
+              aria-current={screen === "events" ? "page" : undefined}
+              onClick={() => setScreen("events")}
+            >
+              События
+            </button>
             <span>{runner.identity?.display_name}</span>
           </nav>
         )}
@@ -262,18 +283,33 @@ export default function App() {
                 </button>
               </div>
             )}
-            <CareerPanel
-              key={runner.identity?.id}
-              mode={screen}
-              read={runner.readResource}
-              identityId={runner.identity?.id ?? "demo-employee"}
-              busy={runner.busy}
-              switchPersona={runner.switchPersona}
-              onPlay={() => {
-                if (completed) runner.leave();
-                setScreen("play");
-              }}
-            />
+            {screen === "events" ? (
+              <RetentionPanel
+                key={runner.identity?.id}
+                read={runner.readResource}
+                write={runner.writeNotificationRead}
+                identityId={runner.identity?.id ?? "demo-employee"}
+                onScenario={(scenario) => {
+                  if (completed) runner.leave();
+                  setEventScenario({ ...scenario, competency_ids: [] });
+                  setSelectedId(`${scenario.id}:${scenario.version}`);
+                  setScreen("play");
+                }}
+              />
+            ) : (
+              <CareerPanel
+                key={runner.identity?.id}
+                mode={screen}
+                read={runner.readResource}
+                identityId={runner.identity?.id ?? "demo-employee"}
+                busy={runner.busy}
+                switchPersona={runner.switchPersona}
+                onPlay={() => {
+                  if (completed) runner.leave();
+                  setScreen("play");
+                }}
+              />
+            )}
           </>
         ) : (
           <>
@@ -384,7 +420,7 @@ export default function App() {
                           <span>СИТУАЦИЯ</span>
                           <span>ВЫБОР</span>
                         </div>
-                        {runner.catalog.map((scenario, index) => {
+                        {catalog.map((scenario, index) => {
                           const chosen =
                             scenario.id === selected.id &&
                             scenario.version === selected.version;
@@ -462,7 +498,7 @@ export default function App() {
                   </div>
                 )}
                 {runner.phase === "ready" &&
-                  runner.catalog.length === 0 &&
+                  catalog.length === 0 &&
                   !connectionProblem && (
                     <div className="empty-scene">
                       <h2>Пока нет учебных ситуаций</h2>
@@ -489,7 +525,7 @@ export default function App() {
                       {scenarioTitle(
                         session.scenario_id,
                         session.scenario_version,
-                        runner.catalog.find(
+                        catalog.find(
                           (item) =>
                             item.id === session.scenario_id &&
                             item.version === session.scenario_version,

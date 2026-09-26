@@ -706,3 +706,34 @@ describe("resilient runner", () => {
     },
   );
 });
+
+describe("notification transport", () => {
+  it("renews an expired token and retries the same idempotent read command", async () => {
+    let calls = 0;
+    const requests = server(({ path }) => {
+      if (path.endsWith("/notifications/notice/read")) {
+        calls++;
+        return calls === 1
+          ? Response.json(apiError("unauthorized"), { status: 401 })
+          : Response.json({ id: "notice", read_at: "2026-09-26T10:00:00Z" });
+      }
+    });
+    const { result } = renderHook(useScenarioRunner);
+    await waitFor(() => expect(result.current.phase).toBe("ready"));
+    await act(async () => {
+      await result.current.writeNotificationRead(
+        "notice",
+        true,
+        new AbortController().signal,
+      );
+    });
+    const writes = requests.filter((r) =>
+      r.path.endsWith("/notifications/notice/read"),
+    );
+    expect(writes).toHaveLength(2);
+    expect(writes.map((r) => [r.init.method, r.init.body])).toEqual([
+      ["PUT", '{"read":true}'],
+      ["PUT", '{"read":true}'],
+    ]);
+  });
+});

@@ -71,6 +71,7 @@ def install_error_handlers(app: FastAPI) -> None:
     async def use_case_error(request: Request, exc: UseCaseError) -> JSONResponse:
         status = {
             "unauthorized": 401,
+            "notification_not_found": 404,
             "demo_auth_disabled": 404,
             "idempotency_conflict": 409,
             "result_not_ready": 409,

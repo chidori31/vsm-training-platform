@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReadResource } from "../career/contracts";
 import { friendlyError } from "../runner/api";
 
@@ -7,35 +7,77 @@ export function useLearningResource<T>(
   identityId: string,
   path: string,
   parse: (value: unknown) => T,
+  keepPreviousData = false,
 ) {
   const [attempt, setAttempt] = useState(0);
-  const key = JSON.stringify([identityId, path, attempt]);
+  const generation = useRef(0);
+  const sourceKey = JSON.stringify([identityId, path]);
+  const key = JSON.stringify([sourceKey, attempt]);
   const [response, setResponse] = useState<{
     key: string;
+    sourceKey: string;
     read: ReadResource;
     data: T | null;
     error: string | null;
   } | null>(null);
   useEffect(() => {
     const controller = new AbortController();
+    const requestGeneration = ++generation.current;
     void read(path, controller.signal)
       .then((value) => {
-        if (controller.signal.aborted) return;
+        if (
+          controller.signal.aborted ||
+          requestGeneration !== generation.current
+        )
+          return;
         const data = parse(value);
-        setResponse({ key, read, data, error: null });
+        setResponse({ key, sourceKey, read, data, error: null });
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted)
-          setResponse({ key, read, data: null, error: friendlyError(error) });
+        if (
+          !controller.signal.aborted &&
+          requestGeneration === generation.current
+        )
+          setResponse((previous) => ({
+            key,
+            sourceKey,
+            read,
+            data:
+              keepPreviousData &&
+              previous?.sourceKey === sourceKey &&
+              previous.read === read
+                ? previous.data
+                : null,
+            error: friendlyError(error),
+          }));
       });
     return () => controller.abort();
-  }, [read, path, parse, key]);
+  }, [read, path, parse, key, sourceKey, keepPreviousData]);
   const current =
-    response?.key === key && response.read === read ? response : null;
+    response?.sourceKey === sourceKey &&
+    response.read === read &&
+    (response.key === key || keepPreviousData)
+      ? response
+      : null;
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const updateData = useCallback(
+    (update: (data: T) => T) => {
+      generation.current += 1;
+      setResponse((previous) =>
+        previous?.sourceKey === sourceKey &&
+        previous.read === read &&
+        previous.data
+          ? { ...previous, data: update(previous.data), error: null }
+          : previous,
+      );
+    },
+    [sourceKey, read],
+  );
   return {
+    updateData,
     data: current?.data ?? null,
     error: current?.error ?? null,
-    retry: () => setAttempt((value) => value + 1),
+    retry,
   };
 }
 

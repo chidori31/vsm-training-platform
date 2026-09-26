@@ -6,10 +6,12 @@ import os
 import signal
 from collections.abc import Callable
 from threading import Event
+from time import monotonic
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.application.retention import RetentionService
 from app.application.sessions import SessionService
 
 logger = logging.getLogger(__name__)
@@ -44,8 +46,19 @@ def main() -> None:
     )
     try:
         service = SessionService(engine)
+        retention = RetentionService(engine)
+        next_retention = 0.0
+
+        def sweep() -> int:
+            nonlocal next_retention
+            count = service.expire_due()
+            if monotonic() >= next_retention:
+                retention.sweep()
+                next_retention = monotonic() + 60
+            return count
+
         run_worker(
-            service.expire_due,
+            sweep,
             stop=stop,
             poll_seconds=float(os.environ.get("TIMER_POLL_SECONDS", "1")),
         )

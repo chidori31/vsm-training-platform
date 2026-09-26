@@ -76,7 +76,7 @@ export function debriefFixture() {
           text: "Попробуйте предложить сопровождение: оно добавляет безопасность.",
           choice_ids: ["offer"],
         },
-        pattern_codes: [],
+        pattern_codes: [] as string[],
       },
     ],
   };

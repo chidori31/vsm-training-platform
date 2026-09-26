@@ -594,6 +594,24 @@ class RunnerController {
     return this.api(path, {}, signal);
   };
 
+  writeNotificationRead = (
+    id: string,
+    read: boolean,
+    signal: AbortSignal,
+  ): Promise<unknown> => {
+    if (this.closed)
+      return Promise.reject(new DOMException("Aborted", "AbortError"));
+    return this.api(
+      `/notifications/${encodeURIComponent(id)}/read`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ read }),
+      },
+      signal,
+    );
+  };
+
   switchPersona = async (personaId: string) => {
     if (
       this.running ||
@@ -655,8 +673,15 @@ export function useScenarioRunner() {
       Promise.reject(new Error("Подключение ещё не готово.")),
     [],
   );
+  const writeNotificationRead = useCallback(
+    (id: string, read: boolean, signal: AbortSignal) =>
+      controller.current?.writeNotificationRead(id, read, signal) ??
+      Promise.reject(new Error("Подключение ещё не готово.")),
+    [],
+  );
   return {
     ...view,
+    writeNotificationRead,
     readResource,
     switchPersona: (personaId: string) =>
       controller.current?.switchPersona(personaId) ?? Promise.resolve(),

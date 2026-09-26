@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "id": "demo-lost-property",
+  "version": 1,
+  "title": "Синтетическое демо: Забытая вещь",
+  "cycle_policy": "forbid",
+  "start_node_id": "request",
+  "competency_ids": [
+    "communication"
+  ],
+  "nodes": [
+    {
+      "id": "request",
+      "text": "В вымышленной поездке пассажир обнаружил оставленную сумку и просит отнести её владельцу. Содержимое неизвестно. Это синтетическая ситуация, не производственная инструкция.",
+      "time_limit_seconds": 60,
+      "choices": [
+        {
+          "id": "coordinate",
+          "text": "Сохранить дистанцию и сообщить ответственному сотруднику",
+          "destination": "followup",
+          "explanation": "В учебной модели сообщение ответственному сотруднику сохраняет безопасность; самостоятельный осмотр неизвестной вещи её снижает.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "safety_rating",
+              "delta": 5
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": 1,
+              "competency_id": "communication"
+            }
+          ]
+        },
+        {
+          "id": "rush",
+          "text": "Открыть сумку самостоятельно",
+          "destination": "unsafe",
+          "explanation": "Несогласованное действие в модели создаёт лишний риск. Лучше сначала согласовать безопасный порядок действий.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "safety_rating",
+              "delta": -10
+            }
+          ]
+        }
+      ],
+      "timeout": {
+        "destination": "expired",
+        "explanation": "Запрос остался без ответа в условное время; доверие снизилось.",
+        "effects": [
+          {
+            "type": "add_score",
+            "metric": "passenger_loyalty",
+            "delta": -3
+          }
+        ]
+      }
+    },
+    {
+      "id": "followup",
+      "text": "Ответственный сотрудник получил информацию. Пассажир ждёт объяснения дальнейших действий.",
+      "choices": [
+        {
+          "id": "explain",
+          "text": "Спокойно объяснить согласованные следующие шаги",
+          "destination": "done",
+          "explanation": "Понятное объяснение уменьшает неопределённость и укрепляет доверие.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "passenger_loyalty",
+              "delta": 5
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": 1,
+              "competency_id": "communication"
+            }
+          ]
+        },
+        {
+          "id": "leave",
+          "text": "Уйти без объяснения",
+          "destination": "done",
+          "explanation": "Без объяснения пассажир остаётся в неопределённости; доверие снижается.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "passenger_loyalty",
+              "delta": -3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "done",
+      "text": "Учебная ситуация завершена. Посмотрите разбор действий.",
+      "terminal": true
+    },
+    {
+      "id": "unsafe",
+      "text": "Попытка завершена с риском для безопасности. Сравните альтернативы в разборе.",
+      "terminal": true
+    },
+    {
+      "id": "expired",
+      "text": "Время ответа истекло. Попробуйте ещё раз, не торопясь с оценкой риска.",
+      "terminal": true
+    }
+  ]
+}

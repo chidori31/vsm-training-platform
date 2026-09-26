@@ -1,0 +1,202 @@
+.retention-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 32px;
+  padding: 42px 0;
+}
+.retention-heading h1 {
+  margin: 12px 0 0;
+  font-size: clamp(32px, 4vw, 58px);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 1.05;
+}
+.retention-heading > p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+  margin: 0;
+}
+.retention-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  border-top: 2px solid var(--ink);
+}
+.challenge-board {
+  padding: 28px 36px 24px 0;
+  min-width: 0;
+}
+.retention-inbox {
+  border-left: 1px solid var(--line);
+  padding: 28px 0 24px 30px;
+  min-width: 0;
+}
+.retention-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.retention-section-title h2 {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0;
+}
+.retention-caption {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.75;
+}
+.challenge-list,
+.notification-list,
+.challenge-stops {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.challenge-entry {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 18px;
+  padding: 32px 0;
+  border-bottom: 1px solid var(--line);
+}
+.challenge-number {
+  font-size: 26px;
+  letter-spacing: -0.06em;
+  color: var(--muted);
+}
+.challenge-status {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: #e5ece5;
+  padding: 5px 9px;
+}
+.challenge-expired .challenge-status {
+  background: #ebe6de;
+}
+.challenge-completed .challenge-status {
+  background: #d3e9c7;
+}
+.challenge-entry h3 {
+  margin: 14px 0 10px;
+  font-size: clamp(23px, 2.5vw, 32px);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+.challenge-entry p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.challenge-deadline {
+  font-variant-numeric: tabular-nums;
+}
+.challenge-progress {
+  margin: 24px 0;
+  font-size: 12px;
+}
+.challenge-progress [role="progressbar"] {
+  background: #dce3df;
+  height: 4px;
+  margin-top: 10px;
+}
+.challenge-progress [role="progressbar"] > span {
+  display: block;
+  background: var(--ink);
+  height: 100%;
+}
+.challenge-stops li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.challenge-stops small {
+  display: block;
+  color: #416343;
+  margin-top: 4px;
+}
+.notification-list li {
+  padding: 22px 0 22px 15px;
+  border-bottom: 1px solid var(--line);
+  border-left: 2px solid transparent;
+}
+.notification-list .notification-unread {
+  border-left-color: var(--ink);
+  background: #edf0e8;
+  padding-right: 12px;
+}
+.notification-list h3 {
+  margin: 10px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.notification-list p {
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.notification-list .notification-date {
+  font-size: 11px;
+  color: var(--muted);
+}
+.retention-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+  font-size: 12px;
+}
+.retention-error {
+  margin: 24px 0;
+  border-left: 2px solid #915235;
+  padding: 8px 16px;
+}
+@media (max-width: 800px) {
+  .retention-columns {
+    grid-template-columns: 1fr;
+  }
+  .challenge-board {
+    padding-right: 0;
+  }
+  .retention-inbox {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 2px solid var(--ink);
+  }
+  .retention-heading {
+    display: block;
+    padding: 30px 0;
+  }
+  .retention-heading > p {
+    margin-top: 18px;
+  }
+}
+@media (max-width: 480px) {
+  .challenge-entry {
+    grid-template-columns: 25px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .challenge-number {
+    font-size: 20px;
+  }
+  .challenge-stops li {
+    grid-template-columns: 15px minmax(0, 1fr);
+  }
+  .challenge-stops button {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .career-navigation {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+}

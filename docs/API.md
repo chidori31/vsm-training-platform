@@ -337,3 +337,26 @@ API-тесты: `tests/test_api_contract.py`, `tests/test_timed_api.py`,
 `tests/domain/test_debrief.py` и `tests/timed_sessions/test_learning_persistence.py`
 проверяют разбор, условия альтернатив, неизбежный timeout, пороги наблюдений,
 воспроизводимость и доступ только к собственной сохранённой истории.
+
+
+## Этап 10: челленджи и внутренние уведомления
+
+Все запросы требуют BearerAuth. `limit` 1–100 (по умолчанию 20), `offset` ≥ 0.
+
+- `GET /api/v1/challenges`: `items`, `total`, `limit`, `offset`, `server_time`.
+  Элемент: id/title/description, starts_at/expires_at, target/progress,
+  status (`scheduled|active|completed|expired`), scenarios (id/version/title/completed).
+  Прогресс только текущего пользователя; участие автоматическое.
+- `GET /api/v1/notifications`: та же пагинация + `unread_count` (непрочитанные
+  и ещё актуальные сообщения во всём ящике). История включает истёкшие сообщения.
+  Элемент: id/kind/title/body, created_at/expires_at/read_at, expired.
+  kind: `new_scenario|challenge_started|challenge_ending|achievement_unlocked`.
+- `PUT /api/v1/notifications/{id}/read`, тело `{"read": true}` или `{"read": false}`.
+  Возвращает обновлённое сообщение. Идемпотентная установка состояния;
+  повторный true не меняет read_at. Чужой/несуществующий id → 404
+  `notification_not_found`; строки вместо boolean → 422.
+
+Нет публичного API публикации кампаний. Оператор запускает `python -m app.retention_seed`
+после импорта новых сценариев. Окна не перезапускаются при повторе команды.
+Даты авторитетны на сервере; при `completed_at == expires_at` прохождение уже
+не засчитывается. Подробные критерии и доставка: [RETENTION.md](RETENTION.md).

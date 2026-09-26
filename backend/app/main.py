@@ -9,6 +9,7 @@ from app.api.errors import ERROR_RESPONSES, install_error_handlers
 from app.api.gamification import router as gamification_router
 from app.api.integrations import router as integrations_router
 from app.api.learning import router as learning_router
+from app.api.retention import router as retention_router
 from app.api.sessions import router as sessions_router
 from app.db import database_available
 
@@ -20,6 +21,7 @@ v1.include_router(catalog_router)
 v1.include_router(integrations_router)
 v1.include_router(gamification_router)
 v1.include_router(learning_router)
+v1.include_router(retention_router)
 app.include_router(v1)
 
 

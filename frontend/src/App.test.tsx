@@ -19,6 +19,7 @@ beforeEach(() => {
     identity: { id: "demo-employee", display_name: "Demo" },
     readResource: vi.fn(() => new Promise<unknown>(() => {})),
     switchPersona: vi.fn(async () => {}),
+    writeNotificationRead: vi.fn(async () => ({})),
     phase: "ready",
     catalog: [scenario],
     state: null,
@@ -207,7 +208,6 @@ describe("scenario runner interface", () => {
     expect(
       within(screen.getByTestId("decision-history")).getByRole("heading", {
         name: "Время на решение истекло",
-        exact: true,
       }),
     ).toBeVisible();
     expect(
