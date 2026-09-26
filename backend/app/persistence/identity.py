@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -17,6 +17,9 @@ class UserProfile(Base):
 
 class DemoToken(Base):
     __tablename__ = "demo_tokens"
+    __table_args__ = (
+        CheckConstraint("token_hash ~ '^[0-9a-f]{64}$'", name="ck_token_sha256"),
+    )
     token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
     employee_id: Mapped[str] = mapped_column(
         ForeignKey("user_profiles.id"), nullable=False
@@ -28,6 +31,11 @@ class DemoToken(Base):
 
 class SessionStartKey(Base):
     __tablename__ = "session_start_keys"
+    __table_args__ = (
+        CheckConstraint(
+            "scenario_version > 0 AND length(btrim(key)) > 0", name="ck_start_key_input"
+        ),
+    )
     employee_id: Mapped[str] = mapped_column(
         ForeignKey("user_profiles.id"), primary_key=True
     )

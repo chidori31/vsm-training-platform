@@ -23,12 +23,14 @@ from app.domain.gameplay import ScenarioSession
 from app.domain.scenario import Scenario
 from app.scenarios.session_state import dump_session, load_session
 
+from .invariants import SESSION_ENVELOPE
 from .scenarios import ScenarioRepository
 
 
 class StoredSession(Base):
     __tablename__ = "scenario_sessions"
     __table_args__ = (
+        CheckConstraint(SESSION_ENVELOPE, name="ck_session_envelope"),
         ForeignKeyConstraint(
             ["scenario_id", "scenario_version"],
             ["scenario_versions.id", "scenario_versions.version"],

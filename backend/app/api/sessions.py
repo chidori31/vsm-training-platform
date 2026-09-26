@@ -3,7 +3,14 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, Response
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+)
 
 from app.api.dependencies import Database, Limit, Offset, User
 from app.api.errors import error_response
@@ -14,8 +21,18 @@ from app.scenarios.schema import Identifier
 from app.scenarios.session_state import DecisionDocument, SessionDocument, dump_session
 
 router = APIRouter(prefix="/sessions", tags=["scenario sessions"])
+
+
+def safe_request_id(value: str) -> str:
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise ValueError("Identifiers must not contain control characters")
+    return value
+
+
 RequestId = Annotated[
-    str, StringConstraints(min_length=1, max_length=128, pattern=r"\S")
+    str,
+    StringConstraints(min_length=1, max_length=128, pattern=r"\S"),
+    AfterValidator(safe_request_id),
 ]
 
 
@@ -30,7 +47,7 @@ class DecisionRequest(BaseModel):
     decision_id: RequestId
     node_id: RequestId
     choice_id: RequestId
-    expected_sequence: Annotated[int, Field(ge=0)]
+    expected_sequence: Annotated[int, Field(ge=0, le=2147483647)]
 
     @field_validator("decision_id")
     @classmethod

@@ -10,11 +10,13 @@ from app.api.gamification import router as gamification_router
 from app.api.integrations import router as integrations_router
 from app.api.learning import router as learning_router
 from app.api.retention import router as retention_router
+from app.api.security import ApiSecurityMiddleware
 from app.api.sessions import router as sessions_router
 from app.db import database_available
 
 app = FastAPI(title="VSM Platform API", version="1.0.0", responses=ERROR_RESPONSES)
 install_error_handlers(app)
+app.add_middleware(ApiSecurityMiddleware)
 v1 = APIRouter(prefix="/api/v1")
 v1.include_router(sessions_router)
 v1.include_router(catalog_router)

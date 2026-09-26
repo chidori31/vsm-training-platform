@@ -53,7 +53,13 @@ function storageWrite(key: string, value: unknown) {
 }
 function requestId(value: unknown): value is string {
   return (
-    typeof value === "string" && value.trim().length > 0 && value.length <= 128
+    typeof value === "string" &&
+    value.trim().length > 0 &&
+    value.length <= 128 &&
+    Array.from(value).every(
+      (character) =>
+        character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127,
+    )
   );
 }
 function savedAttempt(): SavedAttempt {
@@ -81,7 +87,8 @@ function savedAttempt(): SavedAttempt {
         !requestId(value.decision.node_id) ||
         !requestId(value.decision.choice_id) ||
         !Number.isSafeInteger(value.decision.expected_sequence) ||
-        value.decision.expected_sequence < 0)
+        value.decision.expected_sequence < 0 ||
+        value.decision.expected_sequence > 2147483647)
     )
       throw new Error();
     if (value.start && value.decision) throw new Error();

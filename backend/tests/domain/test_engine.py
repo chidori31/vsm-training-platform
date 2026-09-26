@@ -106,6 +106,48 @@ def start(scenario, **kwargs):
     )
 
 
+def test_hostile_commands_cannot_change_state_or_prevent_later_valid_completion(
+    scenario,
+):
+    from app.domain.engine import advance, restore_session
+
+    session = start(scenario)
+    original = session
+    for overrides in (
+        {"node_id": "success"},
+        {"choice_id": "agree"},
+        {"choice_id": "deadline-event"},
+        {"choice_id": "__import__('os').system('noop')"},
+        {"choice_id": "trained"},
+        {"expected_sequence": 1},
+        {"expected_sequence": True},
+        {"expected_sequence": -1},
+    ):
+        command = (
+            dict(
+                node_id="start",
+                choice_id="listen",
+                decision_id="hostile",
+                expected_sequence=0,
+                now=NOW + timedelta(seconds=1),
+            )
+            | overrides
+        )
+        with pytest.raises(DomainError):
+            advance(scenario, session, **command)
+        assert session == original
+        assert restore_session(scenario, session) == original
+    session = choose(scenario, session, "listen")
+    session = choose(scenario, session, "agree", seconds=2)
+    assert session.status is SessionStatus.COMPLETED
+    assert len(session.decisions) == 2
+    tampered = replace(
+        session, scores=ScoreState({LOYALTY: 999, SAFETY: 999, COMMUNICATION: 999})
+    )
+    with pytest.raises(DomainError, match="replayed"):
+        restore_session(scenario, tampered)
+
+
 def choose(scenario, session, choice_id, *, seconds=1, **kwargs):
     from app.domain.engine import advance
 

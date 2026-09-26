@@ -6,10 +6,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
 
+from .invariants import REWARD_JSON
+
 
 class SessionReward(Base):
     __tablename__ = "session_rewards"
     __table_args__ = (
+        CheckConstraint("xp <= 130", name="ck_reward_xp_cap"),
+        CheckConstraint(REWARD_JSON, name="ck_reward_json"),
         CheckConstraint("xp >= 0 AND rule_version = 1", name="ck_reward_v1"),
     )
     session_id: Mapped[str] = mapped_column(

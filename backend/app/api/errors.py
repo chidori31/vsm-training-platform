@@ -31,7 +31,8 @@ class ErrorResponse(BaseModel):
 
 
 ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
-    code: {"model": ErrorResponse} for code in (401, 404, 405, 409, 422, 500, 501, 503)
+    code: {"model": ErrorResponse}
+    for code in (401, 404, 405, 409, 413, 422, 500, 501, 503)
 }
 
 
@@ -48,7 +49,13 @@ def error_response(
         error=ErrorBody(code=code, message=message, details=details or []), data=data
     )
     return JSONResponse(
-        status_code=status, content=body.model_dump(mode="json"), headers=headers
+        status_code=status,
+        content=body.model_dump(mode="json"),
+        headers={
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            **(headers or {}),
+        },
     )
 
 

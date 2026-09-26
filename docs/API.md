@@ -360,3 +360,15 @@ API-тесты: `tests/test_api_contract.py`, `tests/test_timed_api.py`,
 после импорта новых сценариев. Окна не перезапускаются при повторе команды.
 Даты авторитетны на сервере; при `completed_at == expires_at` прохождение уже
 не засчитывается. Подробные критерии и доставка: [RETENTION.md](RETENTION.md).
+
+
+## Ограничения безопасности (этап 11)
+
+Тела `/api/v1/` ограничены 64 KiB, в том числе при потоковой передаче без
+Content-Length. Превышение → 413 `request_too_large` в общем JSON-формате.
+Все ответы versioned API имеют `Cache-Control: no-store` и `X-Content-Type-Options: nosniff`.
+Идентификаторы команды и Idempotency-Key: 1–128 символов, непустые, без ASCII
+управляющих символов. expected_sequence: целое 0–2147483647; bool не принимается.
+Клиентские поля score/loyalty/safety/xp/effects/destination/employee_id/now в
+командах игры отвергаются как лишние (422). У лидербордов нет write-endpoint.
+Подробная модель доверия и границы демо: [SECURITY.md](../SECURITY.md).

@@ -38,6 +38,21 @@ beforeEach(() => {
 });
 
 describe("scenario runner interface", () => {
+  it("renders scenario and choice markup as text without executing content", () => {
+    const state = parseSessionState(structuredClone(active));
+    const text = '<img src=x onerror="window.syntheticAttack=true">';
+    state.session.scenario_id = "synthetic-untrusted-content";
+    state.current_node.text = text;
+    state.available_choices[0].text = text;
+    runner = { ...runner, phase: "active", state };
+    render(<App />);
+    const action = screen.getByRole("button", { name: text });
+    expect(action).toBeVisible();
+    expect(action.querySelector("img")).toBeNull();
+    expect(document.querySelector("[onerror]")).toBeNull();
+    fireEvent.click(action);
+    expect(runner.choose).toHaveBeenCalledWith("explain");
+  });
   it("announces loading and does not offer a start before the catalogue arrives", () => {
     runner = {
       ...runner,

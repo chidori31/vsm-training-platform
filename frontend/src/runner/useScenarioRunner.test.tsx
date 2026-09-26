@@ -36,6 +36,75 @@ function server(
   return requests;
 }
 beforeEach(() => sessionStorage.clear());
+describe("client storage is not authoritative", () => {
+  it.each([
+    { decision_id: `id${String.fromCharCode(0)}` },
+    { node_id: "request\n" },
+    { expected_sequence: 2147483648 },
+  ])(
+    "discards malformed persisted commands without submitting them: %j",
+    async (change) => {
+      sessionStorage.setItem(
+        "vsm.runner.v1",
+        JSON.stringify({
+          sessionId: "session-1",
+          start: null,
+          decision: {
+            decision_id: "one",
+            node_id: "request",
+            choice_id: "explain",
+            expected_sequence: 0,
+            ...change,
+          },
+        }),
+      );
+      const requests = server();
+      const { result } = renderHook(useScenarioRunner);
+      await waitFor(() => expect(result.current.phase).toBe("ready"));
+      expect(requests.some((r) => r.path.includes("/sessions"))).toBe(false);
+    },
+  );
+  it("strips forged score and effect fields from a recoverable decision", async () => {
+    const command = {
+      decision_id: "one",
+      node_id: "request",
+      choice_id: "explain",
+      expected_sequence: 0,
+    };
+    sessionStorage.setItem(
+      "vsm.runner.v1",
+      JSON.stringify({
+        sessionId: "session-1",
+        start: null,
+        decision: {
+          ...command,
+          loyalty: 999,
+          safety: 999,
+          xp: 999,
+          effects: [{ delta: 999 }],
+          destination: "done",
+        },
+        scores: [999],
+      }),
+    );
+    const requests = server(({ path }) =>
+      path.endsWith("/decisions")
+        ? Response.json({
+            ...nextState("one"),
+            outcome: "accepted",
+            acknowledged_decision_id: "one",
+          })
+        : undefined,
+    );
+    const { result } = renderHook(useScenarioRunner);
+    await waitFor(() => expect(result.current.phase).toBe("active"));
+    const sent = requests.find((r) => r.path.endsWith("/decisions"));
+    expect(JSON.parse(String(sent?.init.body))).toEqual(command);
+    expect(
+      result.current.state?.session.scores.every((item) => item.value !== 999),
+    ).toBe(true);
+  });
+});
 describe("resilient runner", () => {
   it("switches an idle demo persona and renews that same identity after expiry", async () => {
     let expired = false;
