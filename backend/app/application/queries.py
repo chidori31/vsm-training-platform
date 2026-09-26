@@ -160,7 +160,8 @@ class QueryService:
                         "version": achievement.version,
                         "name": achievement.name,
                         "description": achievement.description,
-                        "condition": condition,
+                        "condition": None if row.behavior_rule else condition,
+                        "behavior_rule": row.behavior_rule,
                     }
                 )
             return {"items": items, "total": total, "limit": limit, "offset": offset}

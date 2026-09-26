@@ -37,6 +37,54 @@ function server(
 }
 beforeEach(() => sessionStorage.clear());
 describe("resilient runner", () => {
+  it("switches an idle demo persona and renews that same identity after expiry", async () => {
+    let expired = false;
+    const requests = server(({ path, init }) => {
+      if (path.endsWith("/auth/demo")) {
+        const id =
+          JSON.parse(String(init.body || "{}")).persona_id || "demo-employee";
+        return Response.json({
+          ...login,
+          access_token: `token-${id}`,
+          profile: { id, display_name: id },
+        });
+      }
+      if (path.endsWith("/profiles/me/progress")) {
+        if (!expired) {
+          expired = true;
+          return Response.json(apiError("unauthorized"), { status: 401 });
+        }
+        return Response.json({ id: "demo-north-02", xp: 55 });
+      }
+    });
+    const { result } = renderHook(useScenarioRunner);
+    await waitFor(() => expect(result.current.phase).toBe("ready"));
+    await act(() => result.current.switchPersona("demo-north-02"));
+    expect(result.current.identity?.id).toBe("demo-north-02");
+    const progress = await result.current.readResource(
+      "/profiles/me/progress",
+      new AbortController().signal,
+    );
+    expect(progress).toEqual({ id: "demo-north-02", xp: 55 });
+    const auth = requests.filter((r) => r.path.endsWith("/auth/demo"));
+    expect(JSON.parse(String(auth.at(-1)?.init.body)).persona_id).toBe(
+      "demo-north-02",
+    );
+  });
+
+  it("refuses identity switching while a session is active or a command is uncertain", async () => {
+    const requests = server();
+    const { result } = renderHook(useScenarioRunner);
+    await waitFor(() => expect(result.current.phase).toBe("ready"));
+    await act(() => result.current.start(scenario));
+    const before = sessionStorage.getItem("vsm.runner.v1");
+    await act(() => result.current.switchPersona("demo-north-02"));
+    expect(result.current.state?.session.id).toBe("session-1");
+    expect(sessionStorage.getItem("vsm.runner.v1")).toBe(before);
+    expect(requests.filter((r) => r.path.endsWith("/auth/demo"))).toHaveLength(
+      1,
+    );
+  });
   it("authenticates and loads catalog without automatically starting an attempt", async () => {
     const requests = server();
     const { result } = renderHook(useScenarioRunner);

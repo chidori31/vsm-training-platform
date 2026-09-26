@@ -15,6 +15,9 @@ let runner: ReturnType<typeof useScenarioRunner>;
 
 beforeEach(() => {
   runner = {
+    identity: { id: "demo-employee", display_name: "Demo" },
+    readResource: vi.fn(() => new Promise<unknown>(() => {})),
+    switchPersona: vi.fn(async () => {}),
     phase: "ready",
     catalog: [scenario],
     state: null,
@@ -175,9 +178,7 @@ describe("scenario runner interface", () => {
     expect(
       screen.getByRole("heading", { name: "Сценарий завершён" }),
     ).toHaveFocus();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Время на решение истекло",
-    );
+    expect(screen.getByText("Время на решение истекло")).toBeVisible();
     expect(screen.getByTestId("decision-history")).toHaveTextContent(
       "Переход выполнен",
     );

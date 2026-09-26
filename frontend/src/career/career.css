@@ -1,0 +1,619 @@
+.career-navigation {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  border-bottom: 1px solid var(--line);
+  min-height: 64px;
+}
+.career-navigation button {
+  background: transparent;
+  border: 0;
+  min-height: 64px;
+  padding: 12px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.career-navigation button[aria-current="page"] {
+  color: var(--ink);
+  box-shadow: inset 0 -3px var(--ink);
+  font-weight: 600;
+}
+.career-navigation > span {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+}
+.career-panel {
+  padding-bottom: 12px;
+}
+.conductor-pass {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  border: 1px solid var(--line);
+  background: #e5ece5;
+}
+.pass-identity {
+  padding: 35px 40px;
+  border-right: 1px solid #c4d0c4;
+  min-width: 0;
+}
+.pass-identity h2 {
+  font-size: clamp(25px, 3vw, 40px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.15;
+  margin: 8px 0 22px;
+}
+.pass-identity p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #496362;
+}
+.pass-count {
+  display: inline-block;
+  margin-top: 25px;
+  font-size: 12px;
+  border-top: 1px solid #b6c6bc;
+  padding-top: 15px;
+}
+.pass-level {
+  padding: 35px 40px;
+  background: #ece8c8;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.level-heading {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 6px;
+}
+.level-heading .micro-label {
+  grid-column: 1/-1;
+}
+.level-heading > strong {
+  font-size: 90px;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+}
+.xp-total {
+  font-size: 24px;
+  white-space: nowrap;
+  letter-spacing: -0.025em;
+}
+.level-track {
+  height: 6px;
+  background: #c8c8ab;
+  margin: 18px 0 12px;
+}
+.level-track > span {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  transition: width 0.3s;
+}
+.pass-level > p {
+  font-size: 12px;
+  color: #576458;
+}
+.competency-section,
+.achievement-section {
+  margin-top: 38px;
+}
+.competency-register {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+.competency-register > div {
+  flex: 1;
+  min-width: 180px;
+  padding: 24px 26px;
+  border-right: 1px solid var(--line);
+}
+.competency-register > div:first-child {
+  padding-left: 0;
+}
+.competency-register > div:last-child {
+  border: 0;
+}
+.competency-register dt {
+  font-size: 14px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.competency-register dd {
+  font-size: 40px;
+  line-height: 1;
+  margin: 15px 0 0;
+  font-weight: 500;
+}
+.competency-register dd span {
+  font-size: 12px;
+  font-weight: 400;
+  padding-left: 8px;
+}
+.achievement-register {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--ink);
+}
+.achievement-register li {
+  display: grid;
+  grid-template-columns: 48px 1fr 135px;
+  align-items: center;
+  gap: 25px;
+  padding: 25px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.achievement-emblem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid #8c9d98;
+  clip-path: polygon(
+    25% 0,
+    75% 0,
+    100% 25%,
+    100% 75%,
+    75% 100%,
+    25% 100%,
+    0 75%,
+    0 25%
+  );
+  background: #e3e7dc;
+  color: #61746a;
+  font:
+    17px Consolas,
+    monospace;
+}
+.unlocked .achievement-emblem {
+  background: var(--ink);
+  color: var(--yellow);
+  font-size: 24px;
+}
+.achievement-description {
+  min-width: 0;
+}
+.achievement-description h3 {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+.achievement-description p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-top: 7px;
+  max-width: 690px;
+}
+.unlock-date {
+  display: block;
+  margin-top: 8px;
+  font-size: 10px;
+  color: #48705c;
+}
+.achievement-progress > strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.achievement-progress > div {
+  height: 4px;
+  background: #d1dad0;
+  margin-top: 10px;
+}
+.achievement-progress > div > span {
+  display: block;
+  height: 100%;
+  background: #728f7b;
+}
+.unlocked .achievement-progress > div > span {
+  background: #266954;
+}
+.demo-identity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 35px;
+  border-top: 1px solid var(--line);
+  margin-top: 44px;
+  padding: 25px 0;
+}
+.demo-identity h2 {
+  font-size: 16px;
+  font-weight: 500;
+}
+.demo-identity p {
+  font-size: 12px;
+  line-height: 1.55;
+  max-width: 450px;
+  color: var(--muted);
+  margin-top: 7px;
+}
+.demo-identity label {
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 260px;
+}
+.demo-identity select {
+  display: block;
+  background: #fbfbf5;
+  color: var(--ink);
+  border: 1px solid #8e9f99;
+  border-radius: 0;
+  padding: 13px 12px;
+  width: 100%;
+  max-width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  margin-top: 7px;
+  min-height: 46px;
+}
+.demo-identity select:focus-visible {
+  outline: 3px solid #a8461f;
+  outline-offset: 3px;
+}
+.return-shift {
+  margin-top: 28px;
+}
+.earned-reward {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  padding: 25px 28px;
+  margin-top: 25px;
+  background: #ece8c8;
+  border-left: 3px solid #b1a854;
+}
+.earned-number {
+  font-size: 36px;
+  white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+.earned-detail {
+  flex: 1;
+  min-width: 0;
+}
+.earned-detail strong {
+  font-size: 14px;
+}
+.earned-detail p {
+  font-size: 12px;
+  margin-top: 7px;
+  color: #4c6354;
+  line-height: 1.45;
+}
+.earned-detail .new-unlock {
+  color: #275741;
+  font-weight: 600;
+}
+.earned-reward .text-button {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.career-loading,
+.career-error,
+.career-empty {
+  padding: 30px 24px;
+  background: #e9ede5;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 18px 0;
+}
+.career-error {
+  background: #f3e5d7;
+}
+.ranking-intro p {
+  font-size: 23px;
+  letter-spacing: -0.025em;
+  margin: 5px 0 10px;
+}
+.ranking-intro > span {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.scope-switch {
+  display: flex;
+  margin: 28px 0 0;
+  border-bottom: 1px solid var(--ink);
+  gap: 2px;
+}
+.scope-switch button {
+  min-height: 49px;
+  border: 0;
+  background: #e7ebe1;
+  color: var(--ink);
+  padding: 14px 35px;
+  font-size: 14px;
+}
+.scope-switch button[aria-pressed="true"] {
+  background: var(--ink);
+  color: #fff;
+}
+.ranking-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 25px 0 18px;
+}
+.ranking-caption strong {
+  font-size: 18px;
+  font-weight: 500;
+}
+.ranking-caption span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ranking-table-wrap {
+  overflow-x: auto;
+}
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.ranking-table th {
+  text-align: left;
+  font-weight: 500;
+}
+.ranking-table thead {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+.ranking-table th,
+.ranking-table td {
+  padding: 21px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.ranking-table thead th {
+  padding: 13px 16px;
+}
+.ranking-table tbody th {
+  overflow-wrap: anywhere;
+}
+.ranking-table tbody tr {
+  background: #fafaf5;
+}
+.ranking-table .your-rank {
+  background: #e9eddb;
+  box-shadow: inset 3px 0 #476654;
+}
+.rank-number {
+  font:
+    18px Consolas,
+    monospace;
+  color: var(--muted);
+}
+.ranking-table td:last-child,
+.ranking-table th:last-child {
+  text-align: right;
+}
+.ranking-xp {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+.you-label {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 6px;
+  color: #426448;
+  background: #d4dfc6;
+  font-size: 10px;
+}
+.ranking-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 20px;
+  font-size: 12px;
+}
+.ranking-pagination button {
+  padding: 12px 17px;
+  min-height: 45px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid #a0afa5;
+}
+.ranking-pagination button:disabled {
+  opacity: 0.4;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 850px) {
+  .pass-identity,
+  .pass-level {
+    padding: 28px;
+  }
+  .earned-reward {
+    flex-wrap: wrap;
+  }
+  .earned-reward .text-button {
+    margin-left: auto;
+  }
+  .demo-identity {
+    align-items: flex-start;
+  }
+  .demo-identity label {
+    min-width: 220px;
+  }
+}
+@media (max-width: 620px) {
+  .career-navigation {
+    gap: 23px;
+    min-height: 56px;
+  }
+  .career-navigation button {
+    font-size: 12px;
+    min-height: 56px;
+  }
+  .career-navigation > span {
+    display: none;
+  }
+  .conductor-pass {
+    grid-template-columns: 1fr;
+  }
+  .pass-identity {
+    border-right: 0;
+    border-bottom: 1px solid #c4d0c4;
+    padding: 25px;
+  }
+  .pass-identity h2 {
+    font-size: 29px;
+  }
+  .pass-level {
+    padding: 25px;
+  }
+  .level-heading > strong {
+    font-size: 72px;
+  }
+  .xp-total {
+    font-size: 23px;
+  }
+  .competency-register > div {
+    min-width: 0;
+    flex-basis: 100%;
+    padding: 18px 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+  }
+  .competency-register dd {
+    margin: 0;
+    font-size: 29px;
+  }
+  .achievement-register li {
+    grid-template-columns: 38px 1fr;
+    gap: 12px 15px;
+    padding: 22px 0;
+  }
+  .achievement-emblem {
+    width: 36px;
+    height: 36px;
+    font-size: 12px;
+  }
+  .achievement-description h3 {
+    font-size: 19px;
+  }
+  .achievement-description p {
+    font-size: 12px;
+  }
+  .achievement-progress {
+    grid-column: 2;
+  }
+  .achievement-progress > strong {
+    font-size: 11px;
+  }
+  .demo-identity {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .demo-identity label {
+    width: 100%;
+    min-width: 0;
+  }
+  .demo-identity select {
+    font-size: 12px;
+  }
+  .earned-reward {
+    padding: 22px 20px;
+    gap: 16px;
+  }
+  .earned-number {
+    font-size: 32px;
+  }
+  .earned-detail {
+    flex-basis: 100%;
+  }
+  .earned-reward .text-button {
+    margin-left: 0;
+  }
+  .scope-switch button {
+    padding: 14px 18px;
+    flex: 1;
+    font-size: 12px;
+  }
+  .ranking-intro p {
+    font-size: 20px;
+  }
+  .ranking-intro > span {
+    font-size: 12px;
+  }
+  .ranking-table {
+    font-size: 11px;
+    table-layout: fixed;
+  }
+  .ranking-table th,
+  .ranking-table td {
+    padding: 16px 6px;
+  }
+  .ranking-table thead th {
+    font-size: 8px;
+    letter-spacing: 0;
+    padding: 12px 5px;
+  }
+  .ranking-table th:nth-child(1) {
+    width: 13%;
+  }
+  .ranking-table th:nth-child(2) {
+    width: 36%;
+  }
+  .ranking-table th:nth-child(3) {
+    width: 16%;
+  }
+  .ranking-table th:nth-child(4) {
+    width: 17%;
+  }
+  .ranking-table th:nth-child(5) {
+    width: 18%;
+  }
+  .ranking-xp {
+    font-size: 20px;
+  }
+  .rank-number {
+    font-size: 13px;
+  }
+  .you-label {
+    margin: 5px 0 0;
+    display: block;
+    width: fit-content;
+  }
+  .ranking-caption strong {
+    font-size: 16px;
+  }
+  .ranking-caption span {
+    font-size: 10px;
+  }
+  .return-shift {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .level-track > span {
+    transition: none;
+  }
+}

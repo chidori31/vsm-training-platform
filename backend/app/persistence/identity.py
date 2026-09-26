@@ -10,6 +10,9 @@ class UserProfile(Base):
     __tablename__ = "user_profiles"
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     display_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    company_id: Mapped[str | None] = mapped_column(String(64))
+    depot_id: Mapped[str | None] = mapped_column(String(64))
+    brigade_id: Mapped[str | None] = mapped_column(String(64))
 
 
 class DemoToken(Base):

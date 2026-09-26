@@ -190,7 +190,7 @@ def test_catalog_pagination_validation_and_required_start_key(api, scenario):
         ).status_code
         == 422
     )
-    assert api.get("/api/v1/achievements").json()["total"] == 0
+    assert api.get("/api/v1/achievements").json()["total"] == 4
     assert api.get("/api/v1/profiles/me/achievements").json()["total"] == 0
 
 
@@ -239,13 +239,13 @@ def test_achievement_catalog_and_unlocks_read_persisted_data(api, database, scen
                 unlocked_at=db.scalar(select(func.clock_timestamp())),
             )
         )
-    catalog = api.get("/api/v1/achievements?limit=1").json()
-    assert catalog["total"] == 1
+    catalog = api.get("/api/v1/achievements?limit=1&offset=4").json()
+    assert catalog["total"] == 5
     assert catalog["items"][0]["name"] == "Synthetic achievement"
     unlocks = api.get("/api/v1/profiles/me/achievements").json()
     assert unlocks["total"] == 1
     assert unlocks["items"][0]["session_id"] == sid
-    assert api.get("/api/v1/achievements?offset=1").json()["items"] == []
+    assert api.get("/api/v1/achievements?offset=5").json()["items"] == []
 
 
 def test_leaderboard_uses_best_completed_attempt_per_scale_and_tied_ranks(

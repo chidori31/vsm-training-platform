@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiError,
   friendlyError,
@@ -31,6 +31,7 @@ const emptyAttempt = (): SavedAttempt => ({
   decision: null,
 });
 const initialView = (): RunnerView => ({
+  identity: null,
   phase: "loading",
   catalog: [],
   state: null,
@@ -116,7 +117,7 @@ function savedToken(): LoginResponse | null {
     const raw = sessionStorage.getItem(TOKEN_KEY);
     if (!raw) return null;
     const token = parseLogin(JSON.parse(raw));
-    return Date.parse(token.expires_at) > Date.now() + 1000 ? token : null;
+    return token;
   } catch {
     return null;
   }
@@ -139,6 +140,7 @@ function definitiveRejection(error: unknown): error is ApiError {
 // This controller owns requests and persistence for one mounted hook. Polls are
 // cancellable reads; a command owns priority and its immutable retry payload.
 class RunnerController {
+  private identityGeneration = 0;
   private view = initialView();
   private saved = savedAttempt();
   private token = savedToken();
@@ -205,24 +207,41 @@ class RunnerController {
     this.saved = next;
   }
   private async authenticate(signal: AbortSignal, force = false) {
+    const generation = this.identityGeneration;
     if (
       !force &&
       this.token &&
       Date.parse(this.token.expires_at) > Date.now() + 1000
-    )
+    ) {
+      this.update({ identity: this.token.profile });
       return;
+    }
     const token = parseLogin(
-      await request("/auth/demo", { method: "POST" }, signal),
+      await request(
+        "/auth/demo",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            persona_id: this.token?.profile.id ?? "demo-employee",
+          }),
+        },
+        signal,
+      ),
     );
-    if (this.closed || signal.aborted)
+    if (this.closed || signal.aborted || generation !== this.identityGeneration)
       throw new DOMException("Aborted", "AbortError");
     storageWrite(TOKEN_KEY, token);
     this.token = token;
+    this.update({ identity: token.profile });
   }
   private async api(path: string, init: RequestInit, signal: AbortSignal) {
+    const generation = this.identityGeneration;
     await this.authenticate(signal);
-    const send = () =>
-      request(
+    const send = async () => {
+      if (generation !== this.identityGeneration || signal.aborted)
+        throw new DOMException("Aborted", "AbortError");
+      const value = await request(
         path,
         {
           ...init,
@@ -233,12 +252,16 @@ class RunnerController {
         },
         signal,
       );
+      if (generation !== this.identityGeneration)
+        throw new DOMException("Aborted", "AbortError");
+      return value;
+    };
     try {
       return await send();
     } catch (error) {
       if (!(error instanceof ApiError && error.status === 401)) throw error;
-      this.token = null;
-      sessionStorage.removeItem(TOKEN_KEY);
+      if (generation !== this.identityGeneration)
+        throw new DOMException("Aborted", "AbortError");
       await this.authenticate(signal, true);
       return await send();
     }
@@ -564,6 +587,54 @@ class RunnerController {
       this.update({ error: friendlyError(error) });
     }
   };
+
+  readResource = (path: string, signal: AbortSignal): Promise<unknown> => {
+    if (this.closed)
+      return Promise.reject(new DOMException("Aborted", "AbortError"));
+    return this.api(path, {}, signal);
+  };
+
+  switchPersona = async (personaId: string) => {
+    if (
+      this.running ||
+      this.saved.start ||
+      this.saved.decision ||
+      this.view.state?.session.status === "active" ||
+      this.closed
+    )
+      return;
+    await this.run(async (signal) => {
+      const token = parseLogin(
+        await request(
+          "/auth/demo",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ persona_id: personaId }),
+          },
+          signal,
+        ),
+      );
+      if (this.closed || signal.aborted)
+        throw new DOMException("Aborted", "AbortError");
+      if (token.profile.id !== personaId)
+        throw new Error("Сервер вернул другого учебного проводника.");
+      this.persist(emptyAttempt());
+      storageWrite(TOKEN_KEY, token);
+      this.identityGeneration += 1;
+      this.token = token;
+      this.anchor = null;
+      this.update({
+        identity: token.profile,
+        state: null,
+        result: null,
+        phase: "ready",
+        remainingSeconds: null,
+        error: null,
+        connection: "online",
+      });
+    });
+  };
 }
 
 export function useScenarioRunner() {
@@ -578,8 +649,17 @@ export function useScenarioRunner() {
       if (controller.current === runner) controller.current = null;
     };
   }, []);
+  const readResource = useCallback(
+    (path: string, signal: AbortSignal) =>
+      controller.current?.readResource(path, signal) ??
+      Promise.reject(new Error("Подключение ещё не готово.")),
+    [],
+  );
   return {
     ...view,
+    readResource,
+    switchPersona: (personaId: string) =>
+      controller.current?.switchPersona(personaId) ?? Promise.resolve(),
     start: (scenario: ScenarioSummary) =>
       controller.current?.start(scenario) ?? Promise.resolve(),
     choose: (choiceId: string) =>

@@ -24,6 +24,7 @@ class AchievementRecord(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     condition: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    behavior_rule: Mapped[str | None] = mapped_column(Text)
 
 
 class AchievementUnlockRecord(Base):

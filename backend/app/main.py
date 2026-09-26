@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from app.api.catalog import router as catalog_router
 from app.api.errors import ERROR_RESPONSES, install_error_handlers
+from app.api.gamification import router as gamification_router
 from app.api.integrations import router as integrations_router
 from app.api.sessions import router as sessions_router
 from app.db import database_available
@@ -16,6 +17,7 @@ v1 = APIRouter(prefix="/api/v1")
 v1.include_router(sessions_router)
 v1.include_router(catalog_router)
 v1.include_router(integrations_router)
+v1.include_router(gamification_router)
 app.include_router(v1)
 
 

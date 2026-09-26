@@ -62,7 +62,8 @@ class AchievementResponse(BaseModel):
     version: int
     name: str
     description: str
-    condition: ConditionDocument
+    condition: ConditionDocument | None
+    behavior_rule: str | None = None
 
 
 class UnlockResponse(BaseModel):

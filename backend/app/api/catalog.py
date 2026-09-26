@@ -1,6 +1,7 @@
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Path, Query
+from pydantic import BaseModel, ConfigDict
 
 from app.api.dependencies import Database, Limit, Offset, User, require_demo_mode
 from app.api.schemas import (
@@ -21,14 +22,27 @@ from app.scenarios.schema import ScenarioDocument
 router = APIRouter()
 
 
+class DemoLoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    persona_id: Literal[
+        "demo-employee",
+        "demo-north-02",
+        "demo-north-03",
+        "demo-south-04",
+        "demo-other-05",
+    ] = "demo-employee"
+
+
 @router.post(
     "/auth/demo",
     response_model=LoginResponse,
     tags=["auth"],
     dependencies=[Depends(require_demo_mode)],
 )
-def demo_login(engine: Database) -> LoginResponse:
-    result = IdentityService(engine).demo_login()
+def demo_login(engine: Database, body: DemoLoginRequest | None = None) -> LoginResponse:
+    result = IdentityService(engine).demo_login(
+        body.persona_id if body else "demo-employee"
+    )
     return LoginResponse(
         access_token=result.access_token,
         expires_at=result.expires_at,

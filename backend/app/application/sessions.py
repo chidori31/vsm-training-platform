@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.application.errors import UseCaseError
+from app.application.gamification import settle_profile
 from app.domain.common import DomainError, require_integer, require_text, utc_time
 from app.domain.engine import (
     advance,
@@ -19,7 +20,7 @@ from app.domain.engine import (
     node_deadline,
     start_session,
 )
-from app.domain.gameplay import ScenarioSession
+from app.domain.gameplay import ScenarioSession, SessionStatus
 from app.domain.scenario import Choice, Scenario, ScenarioNode
 from app.domain.scoring import Metric, MetricRef, ScoreState
 from app.persistence.identity import SessionStartKey
@@ -116,6 +117,8 @@ class SessionService:
             now=now,
         )
         SessionRepository(database).add(scenario, session)
+        if session.status is SessionStatus.COMPLETED:
+            settle_profile(database, session.employee_id)
         return self._view(scenario, session, now)
 
     def start_idempotent(
@@ -193,6 +196,8 @@ class SessionService:
             now=now,
         )
         repository.save(row, scenario, session)
+        if session.status is SessionStatus.COMPLETED:
+            settle_profile(repository.database, session.employee_id)
         return session, True
 
     def get(self, session_id: str, *, employee_id: str | None = None) -> SessionView:
@@ -264,6 +269,8 @@ class SessionService:
                 else:
                     if not duplicate:
                         repository.save(row, scenario, updated)
+                        if updated.status is SessionStatus.COMPLETED:
+                            settle_profile(database, updated.employee_id)
                     result = DecisionResult(
                         self._view(scenario, updated, now),
                         "duplicate" if duplicate else "accepted",

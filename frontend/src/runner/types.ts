@@ -104,6 +104,7 @@ export interface CatalogPage {
   offset: number;
 }
 export interface RunnerView {
+  identity: { id: string; display_name: string } | null;
   phase: "loading" | "ready" | "starting" | "active" | "completed";
   catalog: ScenarioSummary[];
   state: SessionState | null;

@@ -7,6 +7,7 @@ from sqlalchemy import Engine
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.application.demo_personas import PERSONAS
 from app.application.errors import UseCaseError
 from app.application.sessions import database_time
 from app.domain.profiles import EmployeeProfile
@@ -24,13 +25,16 @@ class IdentityService:
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
 
-    def demo_login(self) -> DemoLogin:
-        profile = EmployeeProfile("demo-employee", "Demo employee")
+    def demo_login(self, persona_id: str = "demo-employee") -> DemoLogin:
+        persona = next((p for p in PERSONAS if p["id"] == persona_id), None)
+        if persona is None:
+            raise UseCaseError("unknown_demo_persona", "Unknown demo persona")
+        profile = EmployeeProfile(persona["id"], persona["display_name"])
         token = token_urlsafe(32)
         with Session(self.engine) as database, database.begin():
             database.execute(
                 insert(UserProfile)
-                .values(id=profile.id, display_name=profile.display_name)
+                .values(**persona)
                 .on_conflict_do_nothing(index_elements=["id"])
             )
             expires = database_time(database) + timedelta(hours=24)
