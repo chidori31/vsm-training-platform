@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "id": "demo-service-situation",
+  "version": 1,
+  "title": "Синтетическое демо: сложная сервисная ситуация",
+  "cycle_policy": "forbid",
+  "start_node_id": "request",
+  "competency_ids": ["service"],
+  "nodes": [
+    {
+      "id": "request",
+      "text": "В вымышленной поездке запрошенная услуга недоступна. Пассажир расстроен. Все варианты и оценки придуманы для тестирования.",
+      "time_limit_seconds": 40,
+      "choices": [
+        {
+          "id": "explain",
+          "text": "Объяснить ограничение и уточнить пожелания",
+          "destination": "alternative",
+          "explanation": "Прозрачное объяснение в этой модели повышает доверие и открывает обсуждение альтернативы.",
+          "effects": [
+            { "type": "add_score", "metric": "passenger_loyalty", "delta": 2 },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "competency_id": "service",
+              "delta": 1
+            }
+          ]
+        },
+        {
+          "id": "promise",
+          "text": "Пообещать недоступную услугу",
+          "destination": "unmet",
+          "explanation": "Неисполнимое обещание в тесте снижает доверие и баллы сервиса.",
+          "effects": [
+            { "type": "add_score", "metric": "passenger_loyalty", "delta": -2 },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "competency_id": "service",
+              "delta": -1
+            }
+          ]
+        }
+      ],
+      "timeout": {
+        "destination": "expired",
+        "explanation": "Пассажир не получил ответа в пределах условного таймера.",
+        "effects": [
+          { "type": "add_score", "metric": "passenger_loyalty", "delta": -1 }
+        ]
+      }
+    },
+    {
+      "id": "alternative",
+      "text": "В каталоге демо есть вымышленная доступная альтернатива.",
+      "choices": [
+        {
+          "id": "offer",
+          "text": "Предложить альтернативу с согласия пассажира",
+          "destination": "complete",
+          "condition": {
+            "mode": "any",
+            "predicates": [
+              { "metric": "passenger_loyalty", "operator": "gte", "value": 2 },
+              {
+                "metric": "competency",
+                "competency_id": "service",
+                "operator": "gte",
+                "value": 1
+              }
+            ]
+          },
+          "explanation": "Достаточно одного условия ANY: доверия либо баллов сервиса.",
+          "effects": [
+            { "type": "add_score", "metric": "passenger_loyalty", "delta": 1 }
+          ]
+        },
+        {
+          "id": "record",
+          "text": "Зафиксировать пожелание и объяснить доступные шаги",
+          "destination": "complete",
+          "explanation": "Безусловный вариант завершает сценарий без обещания недоступного результата."
+        }
+      ]
+    },
+    {
+      "id": "complete",
+      "text": "Демо завершено: ожидания согласованы.",
+      "terminal": true
+    },
+    {
+      "id": "unmet",
+      "text": "Демо завершено: обещание осталось невыполненным.",
+      "terminal": true
+    },
+    {
+      "id": "expired",
+      "text": "Демо завершено по таймауту: ответ не дан.",
+      "terminal": true
+    }
+  ]
+}

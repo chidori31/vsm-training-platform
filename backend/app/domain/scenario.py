@@ -18,11 +18,14 @@ class Choice:
     target_node_id: str
     condition: Condition = Condition()
     effects: tuple[AddScore, ...] = ()
+    explanation: str = ""
 
     def __post_init__(self) -> None:
         require_text(self.id, "choice id")
         require_text(self.text, "choice text")
         require_text(self.target_node_id, "target_node_id")
+        if self.explanation != "":
+            require_text(self.explanation, "choice explanation")
         if not isinstance(self.condition, Condition):
             raise DomainError("Expected Condition")
         object.__setattr__(self, "effects", freeze_items(self.effects, AddScore))

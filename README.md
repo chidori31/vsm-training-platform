@@ -8,8 +8,10 @@
 типы сценариев, сессий, решений, профилей, компетенций, достижений и уведомлений,
 декларативные условия/эффекты и чистые расчёты. Подробнее —
 [ARCHITECTURE.md](docs/ARCHITECTURE.md), включая Mermaid-диаграмму.
-API прохождения, сохранение доменных объектов, игровой интерфейс и интеграции
-ещё не реализованы. Следующий этап не начинается автоматически.
+На этапе 3 добавлены строгий JSON-формат, три синтетических сценария,
+хранение их версий в PostgreSQL JSONB и Alembic-миграция. API прохождения,
+хранение сессий, игровой интерфейс и интеграции ещё не реализованы.
+Следующий этап не начинается автоматически.
 
 ## Scope этапа 2
 
@@ -45,7 +47,7 @@ Achievements, Loyalty Program, HR/LMS integration и ticketing integration.
 - `backend/` — FastAPI, Pydantic, SQLAlchemy, Alembic, pytest;
   `app/domain/` — типы и правила только на стандартной библиотеке Python.
 - `infra/` — Nginx, проксирующий `/api/` в backend.
-- `scenarios/` — каталог для будущего контента; загрузчик ещё не реализован.
+- `scenarios/` — JSON Schema, три демо и [инструкция формата](scenarios/README.md).
 - `docs/BUILD_PLAN.md` — архитектура, границы и этапы разработки.
 - `compose.yaml` — PostgreSQL, backend и frontend для локального запуска.
 
@@ -111,7 +113,15 @@ docker compose exec backend alembic upgrade head
 готовность БД: <http://localhost:8000/ready>. Порты привязаны к loopback.
 Compose передаёт пароль БД отдельно через `PGPASSWORD`, без сборки URL.
 Корневой `DATABASE_URL` используется только при ручном локальном запуске.
-На первом этапе доменных миграций нет; Alembic готов для следующих этапов.
+Миграция создаёт `scenario_versions`; демо импортируются отдельной командой:
+
+```sh
+docker compose exec backend python -m app.scenarios validate /scenarios/demo
+docker compose exec backend python -m app.scenarios import /scenarios/demo
+```
+
+Каталог `scenarios/` подключён к backend только для чтения. Повторный импорт
+не меняет одинаковую версию; при изменении JSON увеличьте `version`.
 
 Логи: `docker compose logs -f`. Остановка: `docker compose down`.
 Данные сохраняются в именованном томе. Изменение пароля в `.env` не меняет
@@ -140,7 +150,19 @@ mypy
 pytest
 ```
 
-Unit-тесты не требуют PostgreSQL. Контейнерная проверка `/ready` проверяет
+Unit-тесты не требуют PostgreSQL. Без `TEST_DATABASE_URL` интеграционные
+тесты пропускаются. Для их запуска в Compose с существующей БД:
+
+```sh
+docker compose run --rm --no-deps --user root -e TEST_DATABASE_URL=postgresql+psycopg:/// -v ./backend:/app backend sh -c 'python -m pip install --quiet -e .[dev] && python -m pytest -q'
+```
+
+Это временный контейнер проверки. Каждый PostgreSQL-тест создаёт отдельную
+случайную схему `test_scenarios_*` и удаляет только её; пользователю БД нужно
+право CREATE SCHEMA. Рабочие таблицы не очищаются. Локально можно задать
+`TEST_DATABASE_URL` в окружении и выполнить `pytest -m postgres` из backend.
+
+Контейнерная проверка `/ready` проверяет
 реальное соединение с PostgreSQL. Домен отдельно проверяется через
 `pytest tests/domain`: условия, эффекты, граф, снимки сессий и импорт без
 site-packages. Playwright предусмотрен для будущих E2E на этапе игрового UI.

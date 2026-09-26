@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "id": "demo-passenger-conflict",
+  "version": 1,
+  "title": "Синтетическое демо: конфликт пассажиров",
+  "cycle_policy": "forbid",
+  "start_node_id": "dispute",
+  "competency_ids": ["communication"],
+  "nodes": [
+    {
+      "id": "dispute",
+      "text": "В вымышленном вагоне два пассажира спорят из-за шума. Выберите реакцию. Все последствия и баллы условны.",
+      "time_limit_seconds": 30,
+      "choices": [
+        {
+          "id": "listen",
+          "text": "Спокойно выслушать обе стороны",
+          "destination": "options",
+          "explanation": "В этой модели внимание к обеим сторонам открывает возможность договориться.",
+          "effects": [
+            { "type": "add_score", "metric": "passenger_loyalty", "delta": 2 },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "competency_id": "communication",
+              "delta": 1
+            }
+          ]
+        },
+        {
+          "id": "blame",
+          "text": "Сразу обвинить одного из участников",
+          "destination": "strained",
+          "explanation": "В синтетическом примере поспешное обвинение усиливает недовольство.",
+          "effects": [
+            { "type": "add_score", "metric": "passenger_loyalty", "delta": -2 },
+            { "type": "add_score", "metric": "safety_rating", "delta": -1 }
+          ]
+        }
+      ],
+      "timeout": {
+        "destination": "expired",
+        "explanation": "Ожидание оставило конфликт без внимания; сработала отдельная ветка таймаута.",
+        "effects": [
+          { "type": "add_score", "metric": "passenger_loyalty", "delta": -1 }
+        ]
+      }
+    },
+    {
+      "id": "options",
+      "text": "Обе стороны готовы обсуждать варианты. Предложите следующий шаг.",
+      "choices": [
+        {
+          "id": "agree",
+          "text": "Предложить общий вариант и проверить согласие",
+          "destination": "resolved",
+          "condition": {
+            "mode": "all",
+            "predicates": [
+              {
+                "metric": "competency",
+                "competency_id": "communication",
+                "operator": "gte",
+                "value": 1
+              }
+            ]
+          },
+          "explanation": "Предыдущее внимательное общение открыло дополнительный вариант выбора.",
+          "effects": [
+            { "type": "add_score", "metric": "safety_rating", "delta": 1 }
+          ]
+        },
+        {
+          "id": "colleague",
+          "text": "Привлечь коллегу к обсуждению",
+          "destination": "resolved",
+          "explanation": "Безусловный вариант сохраняет возможность завершить демо при любых начальных баллах."
+        }
+      ]
+    },
+    {
+      "id": "resolved",
+      "text": "Демо завершено: стороны договорились.",
+      "terminal": true
+    },
+    {
+      "id": "strained",
+      "text": "Демо завершено: напряжение сохранилось. Обсудите последствия первого решения.",
+      "terminal": true
+    },
+    {
+      "id": "expired",
+      "text": "Демо завершено по таймауту: решение не принято.",
+      "terminal": true
+    }
+  ]
+}

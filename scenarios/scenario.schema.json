@@ -1,0 +1,293 @@
+{
+  "$defs": {
+    "ChoiceDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "destination": {
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+          "title": "Destination",
+          "type": "string"
+        },
+        "explanation": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Explanation",
+          "type": "string"
+        },
+        "effects": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EffectDocument"
+          },
+          "maxItems": 64,
+          "title": "Effects",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Text",
+          "type": "string"
+        },
+        "condition": {
+          "$ref": "#/$defs/ConditionDocument",
+          "default": {
+            "mode": "all",
+            "predicates": []
+          }
+        }
+      },
+      "required": ["destination", "explanation", "id", "text"],
+      "title": "ChoiceDocument",
+      "type": "object"
+    },
+    "ConditionDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "default": "all",
+          "enum": ["all", "any"],
+          "title": "Mode",
+          "type": "string"
+        },
+        "predicates": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PredicateDocument"
+          },
+          "maxItems": 64,
+          "title": "Predicates",
+          "type": "array"
+        }
+      },
+      "title": "ConditionDocument",
+      "type": "object"
+    },
+    "EffectDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "enum": ["passenger_loyalty", "safety_rating", "competency"],
+          "title": "Metric",
+          "type": "string"
+        },
+        "competency_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Competency Id"
+        },
+        "type": {
+          "const": "add_score",
+          "title": "Type",
+          "type": "string"
+        },
+        "delta": {
+          "title": "Delta",
+          "type": "integer"
+        }
+      },
+      "required": ["metric", "type", "delta"],
+      "title": "EffectDocument",
+      "type": "object"
+    },
+    "NodeDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Text",
+          "type": "string"
+        },
+        "terminal": {
+          "default": false,
+          "title": "Terminal",
+          "type": "boolean"
+        },
+        "choices": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ChoiceDocument"
+          },
+          "maxItems": 32,
+          "title": "Choices",
+          "type": "array"
+        },
+        "time_limit_seconds": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time Limit Seconds"
+        },
+        "timeout": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutcomeDocument"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": ["id", "text"],
+      "title": "NodeDocument",
+      "type": "object"
+    },
+    "OutcomeDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "destination": {
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+          "title": "Destination",
+          "type": "string"
+        },
+        "explanation": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Explanation",
+          "type": "string"
+        },
+        "effects": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EffectDocument"
+          },
+          "maxItems": 64,
+          "title": "Effects",
+          "type": "array"
+        }
+      },
+      "required": ["destination", "explanation"],
+      "title": "OutcomeDocument",
+      "type": "object"
+    },
+    "PredicateDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "enum": ["passenger_loyalty", "safety_rating", "competency"],
+          "title": "Metric",
+          "type": "string"
+        },
+        "competency_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Competency Id"
+        },
+        "operator": {
+          "enum": ["eq", "ne", "gt", "gte", "lt", "lte"],
+          "title": "Operator",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "integer"
+        }
+      },
+      "required": ["metric", "operator", "value"],
+      "title": "PredicateDocument",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "maximum": 1,
+      "minimum": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "version": {
+      "exclusiveMinimum": 0,
+      "maximum": 2147483647,
+      "title": "Version",
+      "type": "integer"
+    },
+    "title": {
+      "minLength": 1,
+      "pattern": "\\S",
+      "title": "Title",
+      "type": "string"
+    },
+    "cycle_policy": {
+      "default": "forbid",
+      "enum": ["allow", "forbid"],
+      "title": "Cycle Policy",
+      "type": "string"
+    },
+    "start_node_id": {
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+      "title": "Start Node Id",
+      "type": "string"
+    },
+    "competency_ids": {
+      "default": [],
+      "items": {
+        "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+        "type": "string"
+      },
+      "title": "Competency Ids",
+      "type": "array"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/NodeDocument"
+      },
+      "maxItems": 1000,
+      "minItems": 1,
+      "title": "Nodes",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "title",
+    "start_node_id",
+    "nodes"
+  ],
+  "title": "ScenarioDocument",
+  "type": "object"
+}

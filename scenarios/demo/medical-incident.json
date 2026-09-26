@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "id": "demo-medical-incident",
+  "version": 1,
+  "title": "Синтетическое демо: медицинская нештатная ситуация",
+  "cycle_policy": "forbid",
+  "start_node_id": "notice",
+  "competency_ids": ["coordination"],
+  "nodes": [
+    {
+      "id": "notice",
+      "text": "В вымышленной поездке пассажир сообщает о плохом самочувствии. Это тест ветвления и таймера, не медицинская инструкция или реальный регламент ВСМ.",
+      "time_limit_seconds": 20,
+      "choices": [
+        {
+          "id": "notify",
+          "text": "Сообщить ответственному сотруднику о запросе помощи",
+          "destination": "handover",
+          "explanation": "В учебной модели своевременная передача информации повышает условный показатель безопасности.",
+          "effects": [
+            { "type": "add_score", "metric": "safety_rating", "delta": 3 },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "competency_id": "coordination",
+              "delta": 1
+            }
+          ]
+        },
+        {
+          "id": "dismiss",
+          "text": "Отложить сообщение о запросе помощи",
+          "destination": "delayed",
+          "explanation": "В этом синтетическом тесте отсрочка уменьшает условный показатель безопасности.",
+          "effects": [
+            { "type": "add_score", "metric": "safety_rating", "delta": -3 }
+          ]
+        }
+      ],
+      "timeout": {
+        "destination": "expired",
+        "explanation": "Таймер истёк без решения. Этот исход отделён от сознательного выбора отложить сообщение.",
+        "effects": [
+          { "type": "add_score", "metric": "safety_rating", "delta": -2 }
+        ]
+      }
+    },
+    {
+      "id": "handover",
+      "text": "В модели ответственный сотрудник принял сообщение. Завершите передачу информации.",
+      "choices": [
+        {
+          "id": "confirm",
+          "text": "Подтвердить, что сообщение принято",
+          "destination": "complete",
+          "condition": {
+            "mode": "all",
+            "predicates": [
+              { "metric": "safety_rating", "operator": "gte", "value": 3 }
+            ]
+          },
+          "explanation": "Подтверждение демонстрирует условный выбор после изменения safety.",
+          "effects": [
+            { "type": "add_score", "metric": "passenger_loyalty", "delta": 1 }
+          ]
+        },
+        {
+          "id": "relay",
+          "text": "Передать имеющуюся информацию коллеге",
+          "destination": "complete",
+          "explanation": "Безусловная ветка завершает проверку передачи информации. Реальные действия определяются утверждённым регламентом."
+        }
+      ]
+    },
+    {
+      "id": "complete",
+      "text": "Демо завершено: запрос передан. Медицинский исход здесь не моделируется.",
+      "terminal": true
+    },
+    {
+      "id": "delayed",
+      "text": "Демо завершено: запрос был отложен.",
+      "terminal": true
+    },
+    {
+      "id": "expired",
+      "text": "Демо завершено: истёк срок принятия решения.",
+      "terminal": true
+    }
+  ]
+}

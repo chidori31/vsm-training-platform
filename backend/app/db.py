@@ -5,7 +5,7 @@ from sqlalchemy.pool import NullPool
 
 
 class Base(DeclarativeBase):
-    """Shared metadata for future domain models and Alembic."""
+    """Shared metadata for persistence models and Alembic."""
 
 
 def database_available(url: str | None) -> bool:
