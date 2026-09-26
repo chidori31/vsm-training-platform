@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { CareerPanel, CompletionReward } from "./CareerPanel";
+import { analyticsFixture } from "../learning/testFixtures";
 
 const profile = {
   id: "demo-employee",
@@ -60,6 +61,42 @@ const personas = [
 ];
 
 describe("conductor progress", () => {
+  it("opens the conductor analytics from the passport and returns to the profile", async () => {
+    const read = async (path: string) =>
+      path.includes("personas")
+        ? personas
+        : path.includes("/analytics/")
+          ? analyticsFixture()
+          : profile;
+    render(
+      <CareerPanel
+        mode="profile"
+        read={read}
+        identityId="demo-employee"
+        busy={false}
+        switchPersona={async () => {}}
+        onPlay={() => {}}
+      />,
+    );
+    await screen.findByText("165 XP");
+    const toggle = screen.getByRole("button", {
+      name: "Аналитика компетенций",
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(
+      await screen.findByTestId("competency-analysis-communication"),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Аналитика компетенций" }),
+    ).toHaveFocus();
+    fireEvent.click(toggle);
+    expect(
+      screen.queryByTestId("competency-analytics"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("165 XP")).toBeVisible();
+  });
   it("shows server XP, next level and unlocked/progress states", async () => {
     const read = vi.fn(async (path: string) =>
       path.includes("personas") ? personas : profile,

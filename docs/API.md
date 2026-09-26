@@ -1,4 +1,4 @@
-# REST API — этапы 6–8
+# REST API — этапы 6–9
 
 ## Границы
 
@@ -88,11 +88,13 @@ ReDoc — `/redoc`, машинная спецификация — `/openapi.json
 | POST `/sessions/{session_id}/decisions` | Принять решение или подтвердить его повтор |
 | GET `/sessions/{session_id}/decisions` | Страница истории решений в порядке принятия |
 | GET `/sessions/{session_id}/result` | Итог завершённой попытки и её снимок |
+| GET `/sessions/{session_id}/debrief` | Обучающая временная линия, шкалы, компетенции, альтернативы и рекомендации |
 | GET `/results` | Страница итогов завершённых попыток текущего пользователя |
 | GET `/achievements` | Страница определений с condition или behavior_rule |
 | GET `/leaderboard` | Лучшие завершённые попытки пользователей для версии сценария |
 | GET `/leaderboard/organization` | Рейтинг XP в scope=brigade/depot/company, limit/offset |
 | GET `/analytics/me` | Сводка сохранённых попыток текущего пользователя |
+| GET `/analytics/me/competencies` | Прогресс и наблюдения компетенций, повторяющиеся проблемы, статистика сценариев |
 | GET `/integrations/hr-lms/contract` | Публичное описание и JSON Schema будущего обмена |
 | POST `/integrations/hr-lms/training-results` | Публичная проверка контракта, затем 501 |
 
@@ -243,6 +245,38 @@ items=[], total=0; отсутствующая принадлежность не 
 XP, уровень, очки, организация и unlock не принимаются от клиента.
 Правила v1 и ограничения демо — в [GAMIFICATION.md](GAMIFICATION.md).
 
+## Обучающий разбор и аналитика — этап 9
+
+GET `/sessions/{session_id}/debrief` читает только собственную завершённую попытку.
+Чужая/несуществующая даёт 404, незавершённая — 409 result_not_ready. Как и у result,
+чтение сначала согласует просроченный таймаут существующим SessionService.
+
+Ответ содержит `rule_version: 1`, идентификаторы и название сценария, completed_at,
+summary с количеством решений/таймаутов и итоговой дельтой обеих шкал, а также
+упорядоченные `decisions`. Каждое решение содержит текст ситуации и выбора,
+следующий узел и последствие, время, обе шкалы до/после с объяснением, компетенции,
+альтернативы и suggestion. У альтернатив есть `available`; их эффекты вычислены
+на состоянии до исходного выбора. Timeout-альтернативы показывают, что было
+доступно до истечения срока. Указаны только непосредственные последствия.
+`elapsed_seconds` — записанный интервал после входа в узел, включая задержку
+обработки сервером; он не измеряет чистое время размышления.
+
+GET `/analytics/me/competencies` возвращает `rule_version: 1`, числа всех,
+завершённых и активных попыток, decision_count/timeout_count завершённых,
+`competencies`, `strengths`, `weaknesses`, `patterns`, `scenarios`.
+Навык содержит earned_points/net_delta, число положительных и отрицательных
+наблюдений, opportunities/practiced_sessions, status и хронологический trend.
+Status: insufficient_data, strength, growth_area или developing. Паттерн содержит
+count, session_count, recurring и учебный совет; повтор требует двух разных попыток.
+Статистика сценариев разделяет ID/версию и считает средние только по завершениям.
+
+Оба маршрута требуют bearer-токен, не принимают employee_id и не используют LLM.
+Результаты воспроизводятся из проверенных структурированных снимков v2; повтор
+чтения не создаёт решений/наград. Новая миграция для этапа 9 не требуется.
+Старый `/analytics/me` сохранён: его средний итог компетенции не подменяется
+накопленными очками нового ответа. Полный состав полей, пороги и ограничения —
+в [DEBRIEF_ANALYTICS.md](DEBRIEF_ANALYTICS.md).
+
 ## Пример PowerShell
 
 После запуска Compose с включённым demo-входом:
@@ -300,3 +334,6 @@ API-тесты: `tests/test_api_contract.py`, `tests/test_timed_api.py`,
 `tests/timed_sessions/test_gamification_persistence.py` проверяет начисления,
 сохранение unlock, иерархию рейтинга, backfill, rollback и конкурентные завершения
 и старты терминальных сценариев; чистые правила — `tests/domain/test_gamification.py`.
+`tests/domain/test_debrief.py` и `tests/timed_sessions/test_learning_persistence.py`
+проверяют разбор, условия альтернатив, неизбежный timeout, пороги наблюдений,
+воспроизводимость и доступ только к собственной сохранённой истории.

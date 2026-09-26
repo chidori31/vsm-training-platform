@@ -1,0 +1,632 @@
+.debrief-section {
+  margin-top: 38px;
+}
+.debrief-summary,
+.decision-meta,
+.skill-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 25px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.debrief-summary {
+  padding: 18px 0;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+.debrief-summary strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.debrief-timeline,
+.decision-competencies ul,
+.decision-alternatives ul,
+.skills-analysis-list,
+.pattern-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.debrief-entry {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 25px;
+  position: relative;
+  padding: 30px 0 0;
+}
+.debrief-entry::before {
+  content: "";
+  position: absolute;
+  width: 1px;
+  background: var(--line);
+  top: 60px;
+  bottom: -30px;
+  left: 22px;
+}
+.debrief-entry:last-child::before {
+  bottom: 30px;
+}
+.debrief-index {
+  width: 45px;
+  height: 35px;
+  border: 1px solid #a8b7ac;
+  display: grid;
+  place-items: center;
+  font:
+    15px Consolas,
+    monospace;
+  background: #e7ece3;
+  z-index: 1;
+}
+.debrief-entry > article {
+  min-width: 0;
+  padding-bottom: 30px;
+  border-bottom: 1px solid var(--line);
+}
+.decision-meta {
+  gap: 8px 18px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 0 17px;
+}
+.decision-meta > time {
+  margin-left: auto;
+}
+.decision-context {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.65;
+  max-width: 850px;
+}
+.debrief-entry h3 {
+  font-size: clamp(21px, 2.6vw, 29px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+  margin: 12px 0 20px;
+}
+.decision-consequence {
+  border-left: 3px solid #8caa91;
+  padding: 2px 0 2px 18px;
+}
+.decision-consequence p {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: 8px;
+  max-width: 850px;
+}
+.decision-consequence .decision-destination {
+  color: var(--muted);
+  font-size: 13px;
+}
+.decision-scores {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 25px 0;
+  background: #e9ede4;
+}
+.decision-score {
+  padding: 20px 23px;
+}
+.decision-score + .decision-score {
+  border-left: 1px solid #c8d2c7;
+}
+.decision-score dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+.decision-score dd {
+  margin: 0;
+}
+.decision-score-values {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 9px 0 12px;
+  font-size: 27px;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+.decision-score-values > strong {
+  font-size: 23px;
+  font-weight: 500;
+  color: #28694f;
+}
+.decision-score p,
+.decision-competencies p,
+.decision-alternatives p {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.learning-negative,
+.decision-score-values > .learning-negative {
+  color: #9b3f21;
+}
+.learning-note {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.decision-score .learning-note {
+  display: block;
+  margin-top: 7px;
+  font-size: 11px;
+}
+.decision-competencies h4 {
+  margin: 0 0 13px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.decision-competencies li {
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.decision-competencies li > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.decision-competencies strong {
+  font-weight: 500;
+}
+.decision-competencies p {
+  color: var(--muted);
+}
+.decision-alternatives {
+  margin-top: 19px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.decision-alternatives > summary,
+.skill-trend > summary {
+  cursor: pointer;
+  padding: 17px 0;
+  font-size: 13px;
+  font-weight: 500;
+  min-height: 48px;
+  width: fit-content;
+  max-width: 100%;
+}
+.decision-alternatives > .learning-note {
+  margin-bottom: 17px;
+  max-width: 760px;
+}
+.decision-alternatives li {
+  padding: 18px 22px;
+  margin: 0 0 15px;
+  background: #eef0e9;
+  border-left: 2px solid #8aa795;
+}
+.decision-alternatives .alternative-unavailable {
+  background: #efeee8;
+  border-left-color: #a6aaa0;
+}
+.alternative-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-bottom: 9px;
+}
+.alternative-heading h4 {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+}
+.alternative-availability {
+  font-size: 10px;
+  color: #365e50;
+}
+.alternative-unavailable .alternative-availability {
+  color: var(--muted);
+}
+.alternative-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 14px 0 0;
+  font-size: 12px;
+}
+.alternative-effects > div {
+  display: flex;
+  gap: 8px;
+}
+.alternative-effects dd {
+  margin: 0;
+  font-weight: 600;
+}
+.decision-advice {
+  margin-top: 20px;
+  padding: 19px 22px;
+  background: #ece8cc;
+}
+.decision-advice p {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: 9px;
+}
+.learning-loading,
+.learning-error,
+.learning-empty {
+  margin: 18px 0;
+  padding: 24px;
+  font-size: 14px;
+  line-height: 1.65;
+  background: #e9ede4;
+}
+.learning-error {
+  background: #f3e5d7;
+}
+.learning-error > strong {
+  font-weight: 500;
+}
+.learning-error > p {
+  margin: 7px 0 12px;
+}
+.learning-error .text-button {
+  font-size: 13px;
+}
+.analytics-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px 25px;
+  padding: 21px 0;
+  border-bottom: 1px solid var(--line);
+}
+.analytics-toggle-row .text-button {
+  font-size: 14px;
+}
+.analytics-toggle-row > p {
+  font-size: 12px;
+  color: var(--muted);
+}
+.competency-analytics {
+  margin: 25px 0 45px;
+  border-top: 3px solid var(--ink);
+  scroll-margin-top: 25px;
+}
+.analytics-heading {
+  padding: 27px 0 24px;
+}
+.analytics-heading h2 {
+  margin: 10px 0 12px;
+  font-size: clamp(26px, 3vw, 38px);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+.analytics-heading h2:focus {
+  outline: none;
+}
+.analytics-heading > p:last-child {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.analytics-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 40px;
+  margin: 0;
+  padding: 22px 0;
+  border-block: 1px solid var(--line);
+}
+.analytics-totals > div {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.analytics-totals dt {
+  font-size: 11px;
+  color: var(--muted);
+}
+.analytics-totals dd {
+  font-size: 29px;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.analytics-method {
+  margin: 22px 0;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 850px;
+  line-height: 1.7;
+}
+.analytics-conclusions {
+  margin: 0;
+}
+.analytics-conclusions > div {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 22px;
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.analytics-conclusions dt {
+  font-weight: 500;
+}
+.analytics-conclusions dd {
+  margin: 0;
+  color: #496362;
+}
+.points-explanation {
+  margin: 18px 0 25px;
+  max-width: 850px;
+}
+.skills-analysis-list {
+  border-top: 1px solid var(--ink);
+}
+.skill-analysis {
+  padding: 26px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+.skill-analysis-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 15px;
+}
+.skill-analysis-heading h3 {
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.skill-status {
+  padding: 6px 10px;
+  font-size: 11px;
+  background: #e8ebe1;
+  color: #536762;
+}
+.status-strength {
+  color: #29583e;
+  background: #e0e9d5;
+}
+.status-growth_area {
+  color: #904222;
+  background: #f0e5d6;
+}
+.status-insufficient_data {
+  color: #5a6465;
+  background: #e8e9e3;
+}
+.skill-evidence {
+  margin: 18px 0 15px;
+  gap: 8px 24px;
+  font-size: 11px;
+}
+.skill-evidence strong {
+  font-weight: 500;
+  color: var(--ink);
+}
+.insufficient-explanation {
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.skill-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  font-size: 13px;
+}
+.skill-points strong {
+  font-size: 20px;
+  font-weight: 500;
+  padding: 0 4px;
+}
+.skill-trend {
+  margin-top: 8px;
+}
+.skill-trend > .learning-note {
+  margin: 0 0 15px;
+}
+.learning-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 12px 0 20px;
+}
+.learning-table-wrap:focus-visible {
+  outline: 3px solid #a8461f;
+  outline-offset: 3px;
+}
+.learning-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.learning-table th {
+  font-weight: 500;
+}
+.learning-table thead th {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+  vertical-align: bottom;
+}
+.learning-table th,
+.learning-table td {
+  padding: 15px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.learning-table tbody tr {
+  background: #edf0e8;
+}
+.learning-table tbody th {
+  line-height: 1.5;
+}
+.learning-patterns,
+.scenario-statistics {
+  margin-top: 38px;
+}
+.learning-patterns .action-heading h3,
+.scenario-statistics .action-heading h3 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.pattern-list > li {
+  padding: 23px 0;
+  border-bottom: 1px solid var(--line);
+}
+.pattern-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.pattern-heading h4 {
+  font-size: 17px;
+  font-weight: 500;
+  margin: 0;
+}
+.pattern-heading > span {
+  font-size: 11px;
+  color: #8d492f;
+}
+.pattern-list p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.pattern-count {
+  font-size: 11px;
+  display: block;
+  margin: 10px 0 16px;
+  color: var(--muted);
+}
+.pattern-list .pattern-advice {
+  color: var(--ink);
+  padding-left: 15px;
+  border-left: 2px solid #aaba97;
+}
+.scenario-statistics-table {
+  min-width: 750px;
+}
+.scenario-statistics-table th:first-child {
+  min-width: 180px;
+}
+.scenario-version {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+@media (max-width: 620px) {
+  .debrief-entry {
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 12px;
+    padding-top: 25px;
+  }
+  .debrief-entry::before {
+    left: 13px;
+  }
+  .debrief-index {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+  .decision-meta {
+    font-size: 9px;
+    padding-top: 3px;
+    gap: 9px 12px;
+  }
+  .decision-meta > time {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+  .decision-context {
+    font-size: 13px;
+  }
+  .debrief-entry h3 {
+    font-size: 22px;
+  }
+  .decision-consequence {
+    padding-left: 13px;
+  }
+  .decision-consequence p {
+    font-size: 13px;
+  }
+  .decision-scores {
+    grid-template-columns: 1fr;
+    margin: 20px 0;
+  }
+  .decision-score {
+    padding: 18px;
+  }
+  .decision-score + .decision-score {
+    border-left: 0;
+    border-top: 1px solid #c8d2c7;
+  }
+  .decision-competencies li > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .decision-alternatives li,
+  .decision-advice {
+    padding: 16px;
+  }
+  .alternative-heading h4 {
+    font-size: 15px;
+  }
+  .debrief-summary {
+    gap: 10px 17px;
+    font-size: 11px;
+  }
+  .analytics-totals {
+    gap: 20px 28px;
+  }
+  .analytics-conclusions > div {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .skill-analysis-heading,
+  .pattern-heading {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .skill-analysis-heading h3 {
+    font-size: 23px;
+  }
+  .skill-evidence {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .skill-points {
+    flex-direction: column;
+  }
+  .trend-table {
+    min-width: 450px;
+  }
+  .learning-patterns .action-heading,
+  .scenario-statistics .action-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .learning-loading,
+  .learning-error,
+  .learning-empty {
+    padding: 20px;
+    font-size: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .competency-analytics {
+    scroll-behavior: auto;
+  }
+}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { friendlyError } from "../runner/api";
+import { CompetencyAnalytics } from "../learning/CompetencyAnalytics";
 import {
   competencyName,
   parseBoard,
@@ -155,6 +156,7 @@ export function CareerPanel(props: Props) {
 }
 
 function Profile({ read, identityId, busy, switchPersona }: Props) {
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const resource = useResource(read, "/profiles/me/progress", parseProgress);
   const personas = useResource(read, "/auth/demo/personas", parsePersonas);
   if (!resource.data)
@@ -199,6 +201,21 @@ function Profile({ read, identityId, busy, switchPersona }: Props) {
           </p>
         </div>
       </div>
+      <div className="analytics-toggle-row">
+        <button
+          className="text-button"
+          aria-expanded={analyticsOpen}
+          aria-controls="competency-analytics"
+          onClick={() => setAnalyticsOpen((open) => !open)}
+        >
+          Аналитика компетенций{" "}
+          <span aria-hidden="true">{analyticsOpen ? "−" : "↗"}</span>
+        </button>
+        <p>Сильные стороны, динамика и следующий шаг</p>
+      </div>
+      {analyticsOpen && (
+        <CompetencyAnalytics read={read} identityId={identityId} />
+      )}
       <section
         className="competency-section"
         aria-labelledby="competencies-title"

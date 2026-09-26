@@ -161,7 +161,7 @@ test("the real 20 second deadline automatically takes the timeout branch", async
       Date.parse(expired.session.started_at),
   ).toBeGreaterThanOrEqual(20_000);
   await expect(
-    page.getByText("Время на решение истекло", { exact: true }),
+    page.getByRole("status").filter({ hasText: "Время на решение истекло" }),
   ).toBeVisible();
   await expect(page.getByTestId("safety-value")).toHaveText("48");
   await expect(page.getByTestId("decision-history")).toContainText(

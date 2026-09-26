@@ -8,6 +8,7 @@ import {
 import type { Decision, SessionSnapshot } from "./runner/types";
 import { useScenarioRunner } from "./runner/useScenarioRunner";
 import { CareerPanel, CompletionReward } from "./career/CareerPanel";
+import { Debrief } from "./learning/Debrief";
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
   return (
@@ -650,66 +651,12 @@ export default function App() {
                     decision={lastDecision}
                   />
                 )}
-                <section
-                  className="history-section"
-                  aria-labelledby="history-heading"
-                  data-testid="decision-history"
-                >
-                  <div className="action-heading">
-                    <h2 id="history-heading">Ваши решения</h2>
-                    <span>
-                      {session.decisions.length}{" "}
-                      {session.decisions.length === 1 ? "событие" : "события"}
-                      {runner.result &&
-                        ` · ${Math.round(runner.result.summary.duration_seconds)} сек.`}
-                    </span>
-                  </div>
-                  <ol>
-                    {session.decisions.map((decision, index) => (
-                      <li key={decision.id}>
-                        <span className="history-index">
-                          {String(index + 1).padStart(2, "0")}
-                        </span>
-                        <div>
-                          <h3>
-                            {decision.choice_id === "__timeout__"
-                              ? "Переход по истечении времени"
-                              : `Решение ${index + 1}`}
-                          </h3>
-                          <p>{decision.explanation}</p>
-                          <div className="change-list">
-                            {decision.score_changes
-                              .filter(
-                                (change) => change.metric !== "competency",
-                              )
-                              .map((change) => (
-                                <span
-                                  className={
-                                    change.applied_delta < 0 ? "negative" : ""
-                                  }
-                                  key={change.metric}
-                                >
-                                  {change.metric === "passenger_loyalty"
-                                    ? "Доверие"
-                                    : "Безопасность"}{" "}
-                                  <strong>
-                                    {change.applied_delta > 0 ? "+" : ""}
-                                    {change.applied_delta}
-                                  </strong>
-                                  <span className="change-values">
-                                    {change.before} → {change.after}
-                                  </span>
-                                </span>
-                              ))}
-                            {decision.score_changes.length === 0 && (
-                              <span>Без изменения показателей</span>
-                            )}
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                </section>
+                <Debrief
+                  key={`${runner.identity?.id}:${session.id}`}
+                  read={runner.readResource}
+                  sessionId={session.id}
+                  identityId={runner.identity?.id ?? "demo-employee"}
+                />
                 <div className="completion-actions">
                   <button
                     className="primary-button"

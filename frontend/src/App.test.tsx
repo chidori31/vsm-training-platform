@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { parseSessionState } from "./runner/api";
@@ -9,6 +9,7 @@ import {
   scenario,
 } from "./runner/testFixtures";
 import { useScenarioRunner } from "./runner/useScenarioRunner";
+import { debriefFixture } from "./learning/testFixtures";
 
 vi.mock("./runner/useScenarioRunner");
 let runner: ReturnType<typeof useScenarioRunner>;
@@ -170,18 +171,45 @@ describe("scenario runner interface", () => {
     expect(screen.getByRole("button", { name: "Предложить" })).toBeEnabled();
   });
 
-  it("shows the saved timeout result, explanations and a return to the catalogue", () => {
+  it("shows the saved timeout result, explanations and a return to the catalogue", async () => {
     const state = parseSessionState(completedState());
     state.session.decisions[0].choice_id = "__timeout__";
-    runner = { ...runner, phase: "completed", state };
+    const debrief = debriefFixture();
+    debrief.decisions[0].was_timeout = true;
+    debrief.decisions[0].choice_id = "__timeout__";
+    debrief.decisions[0].choice_text = "Время на решение истекло";
+    debrief.decisions[0].pattern_codes = ["timeout"];
+    debrief.summary.timeout_count = 1;
+    runner = {
+      ...runner,
+      phase: "completed",
+      state,
+      readResource: async (path) =>
+        path.endsWith("/debrief") ? debrief : new Promise<unknown>(() => {}),
+    };
     render(<App />);
     expect(
       screen.getByRole("heading", { name: "Сценарий завершён" }),
     ).toHaveFocus();
-    expect(screen.getByText("Время на решение истекло")).toBeVisible();
-    expect(screen.getByTestId("decision-history")).toHaveTextContent(
-      "Переход выполнен",
-    );
+    expect(
+      screen.getByText("Время на решение истекло", {
+        selector: ".decision-feedback strong",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Разбор решений" }),
+    ).toBeVisible();
+    expect(
+      await within(screen.getByTestId("decision-history")).findByText(
+        "Переход выполнен",
+      ),
+    ).toBeVisible();
+    expect(
+      within(screen.getByTestId("decision-history")).getByRole("heading", {
+        name: "Время на решение истекло",
+        exact: true,
+      }),
+    ).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "Объяснить" }),
     ).not.toBeInTheDocument();
