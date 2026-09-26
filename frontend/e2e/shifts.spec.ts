@@ -60,7 +60,7 @@ test("a real three-event shift advances in order, survives reload, and opens its
     expect(advance.ok()).toBe(true);
     old = (await advance.json()) as NonNullable<typeof old>;
   }
-  await page.goto("/");
+  await page.goto("/#training");
   await expect(
     page.getByRole("region", { name: "Рабочая смена" }),
   ).toBeVisible();

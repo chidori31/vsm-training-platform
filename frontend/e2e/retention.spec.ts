@@ -16,7 +16,7 @@ test("internal notifications retain read/unread after reload and fit a mobile sc
 }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/");
+  await page.goto("/#training");
   await events(page);
   const notice = page.locator(".notification-list > li").first();
   await expect(notice).toBeVisible();
@@ -78,7 +78,7 @@ test("internal notifications retain read/unread after reload and fit a mobile sc
 test("new scenario completions feed challenge progress through the real API", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/#training");
   await events(page);
   for (const title of ["Помощь при посадке", "Забытая вещь"]) {
     await page

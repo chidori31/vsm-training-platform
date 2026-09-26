@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.application.retention import RetentionService
 from app.application.sessions import SessionService
+from app.application.simulations import SimulationService
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +48,12 @@ def main() -> None:
     try:
         service = SessionService(engine)
         retention = RetentionService(engine)
+        simulations = SimulationService(engine)
         next_retention = 0.0
 
         def sweep() -> int:
             nonlocal next_retention
-            count = service.expire_due()
+            count = service.expire_due() + simulations.sweep()
             if monotonic() >= next_retention:
                 retention.sweep()
                 next_retention = monotonic() + 60

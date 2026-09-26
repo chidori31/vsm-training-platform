@@ -1,0 +1,1001 @@
+.simulation {
+  --sim-red: #da252b;
+  --sim-ink: #202328;
+  --sim-muted: #666b71;
+  color: var(--sim-ink);
+  padding: 24px 0 40px;
+}
+.simulation button,
+.simulation select {
+  font: inherit;
+}
+.simulation button {
+  cursor: pointer;
+}
+.simulation button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.simulation button:focus-visible,
+.simulation select:focus-visible,
+.simulation summary:focus-visible {
+  outline: 3px solid var(--sim-red);
+  outline-offset: 4px;
+}
+.simulation h1,
+.simulation h2,
+.simulation h3,
+.simulation p {
+  margin-top: 0;
+}
+.sim-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.sim-heading h1 {
+  font-size: clamp(25px, 3vw, 38px);
+  line-height: 1.15;
+  margin: 10px 0 0;
+  max-width: 800px;
+}
+.sim-clock {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 0 10px;
+  font-variant-numeric: tabular-nums;
+}
+.sim-clock small {
+  grid-column: 1/-1;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+.sim-clock strong {
+  font-size: 42px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.sim-clock span {
+  font-size: 16px;
+  color: var(--sim-muted);
+}
+.sim-route {
+  margin: 30px 0 24px;
+  position: relative;
+}
+.sim-route-track {
+  position: absolute;
+  top: 0;
+  left: 6px;
+  right: 6px;
+  height: 4px;
+  background: #d8dade;
+  overflow: hidden;
+}
+.sim-route-track > span {
+  height: 100%;
+  display: block;
+  background: var(--sim-red);
+  transition: width 1s linear;
+}
+.sim-route ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+}
+.sim-route li {
+  position: relative;
+  padding-top: 19px;
+  font-size: 14px;
+}
+.sim-route li:before {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 3px solid #c9ccd0;
+  background: white;
+  top: -4px;
+  left: 0;
+  border-radius: 50%;
+}
+.sim-route li:last-child {
+  text-align: right;
+}
+.sim-route li:last-child:before {
+  left: auto;
+  right: 0;
+}
+.sim-route .passed:before,
+.sim-route .dwell:before {
+  border-color: var(--sim-red);
+}
+.sim-route .dwell:before {
+  background: var(--sim-red);
+  box-shadow: 0 0 0 4px #da252b15;
+}
+.sim-route small {
+  display: block;
+  color: var(--sim-muted);
+  font-size: 12px;
+  margin-top: 5px;
+}
+.sim-metrics {
+  display: flex;
+  margin: 0 0 24px;
+  border-block: 1px solid #d8dade;
+  padding: 14px 0;
+}
+.sim-metrics > div {
+  flex: 1;
+  border-right: 1px solid #e1e3e5;
+  padding: 0 18px;
+}
+.sim-metrics > div:first-child {
+  padding-left: 0;
+}
+.sim-metrics > div:last-child {
+  border: 0;
+}
+.sim-metrics dt {
+  font-size: 12px;
+  color: var(--sim-muted);
+}
+.sim-metrics dd {
+  margin: 6px 0 0;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.sim-metrics small {
+  font-size: 12px;
+  color: #73777d;
+  margin-left: 3px;
+}
+.sim-operation {
+  display: grid;
+  grid-template-columns: minmax(255px, 0.9fr) minmax(310px, 1.35fr) minmax(
+      225px,
+      0.8fr
+    );
+  gap: 24px;
+  align-items: start;
+}
+.sim-section-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  margin-bottom: 20px;
+}
+.sim-section-label h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.sim-section-label > span {
+  font-size: 11px;
+  color: var(--sim-muted);
+}
+.sim-map {
+  display: flex;
+  gap: 12px;
+  background: #eff0f1;
+  padding: 24px 18px 24px 10px;
+  min-height: 420px;
+}
+.sim-direction {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #73777d;
+  text-align: center;
+}
+.sim-carriage {
+  width: 100%;
+  position: relative;
+  border: 2px solid #646a73;
+  border-radius: 45px 45px 25px 25px;
+  padding: 24px 10px 15px;
+  background: white;
+  box-shadow:
+    5px 0 0 #d7dade,
+    -5px 0 0 #d7dade;
+}
+.sim-carriage:before {
+  content: "01";
+  display: block;
+  color: #82878c;
+  font-size: 11px;
+  letter-spacing: 4px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.sim-zone {
+  position: relative;
+  width: 100%;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 8px;
+  background: #f5f6f7;
+  border: 1px solid #caced2;
+  padding: 12px 8px;
+  margin: 0 0 7px;
+  min-height: 65px;
+  transition: background 0.12s;
+}
+.sim-zone:hover {
+  background: #eceef0;
+}
+.sim-zone.selected {
+  border: 2px solid var(--sim-red);
+  padding: 11px 7px;
+  background: #fff4f4;
+}
+.sim-zone.urgent {
+  box-shadow: inset 4px 0 var(--sim-red);
+}
+.sim-zone strong {
+  font-size: 13px;
+  line-height: 1.3;
+}
+.sim-zone-index {
+  font-size: 10px;
+  color: var(--sim-muted);
+}
+.sim-zone-info {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  font-size: 10px;
+}
+.sim-you {
+  font-weight: 700;
+}
+.sim-zone-alert {
+  color: #ad1b20;
+  font-weight: 700;
+}
+.sim-zone-seats {
+  grid-column: 2;
+  display: flex;
+  gap: 6px;
+}
+.sim-zone-seats i {
+  width: 17px;
+  height: 20px;
+  border: 1px solid #b7bdc4;
+  border-bottom: 4px solid #b7bdc4;
+  border-radius: 3px 3px 0 0;
+  background: white;
+}
+.sim-zone-seats i.occupied {
+  background: #48515d;
+  border-color: #48515d;
+}
+.sim-zone-seats i:nth-child(2) {
+  margin-right: auto;
+}
+.sim-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  font-size: 10px;
+  color: var(--sim-muted);
+  margin: 12px 0 24px;
+}
+.sim-equipment h3,
+.sim-dispatch h3 {
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  margin: 26px 0 12px;
+}
+.sim-equipment ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.sim-equipment li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e2e4e6;
+  font-size: 12px;
+}
+.sim-equipment li span {
+  text-align: right;
+  color: var(--sim-muted);
+}
+.sim-tablet {
+  border: 1px solid #cfd2d6;
+  border-top: 4px solid var(--sim-ink);
+  padding: 20px 24px 24px;
+  min-height: 550px;
+  background: #fff;
+}
+.sim-tablet h2 {
+  font-size: 24px;
+  margin-bottom: 24px;
+}
+.sim-tablet h3 {
+  font-size: 21px;
+  line-height: 1.3;
+  margin: 10px 0 16px;
+}
+.sim-tablet h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.sim-tablet .sim-section-label {
+  margin-bottom: 12px;
+}
+.sim-tablet .micro-label {
+  letter-spacing: 0.1em;
+  font-size: 10px;
+}
+.sim-incident-state {
+  font-size: 11px;
+  color: var(--sim-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.sim-incident-state.critical,
+.sim-incident-state.escalated {
+  color: #ad1b20;
+  font-weight: 700;
+}
+.sim-observation {
+  font-size: 20px;
+  line-height: 1.55;
+  border-left: 3px solid var(--sim-red);
+  padding-left: 16px;
+  margin: 20px 0 25px;
+}
+.sim-person {
+  display: flex;
+  gap: 12px;
+  background: #f4f5f6;
+  padding: 14px;
+  font-size: 13px;
+}
+.sim-person > span {
+  font-size: 30px;
+}
+.sim-person p {
+  font-size: 12px;
+  color: var(--sim-muted);
+  margin: 5px 0 0;
+}
+.sim-facts {
+  padding: 20px 0;
+  border-bottom: 1px solid #dadde0;
+}
+.sim-facts h4 {
+  margin: 0 0 12px;
+}
+.sim-facts p,
+.sim-facts li {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #4d535b;
+}
+.sim-facts ul {
+  padding-left: 18px;
+  margin-bottom: 0;
+}
+.sim-facts p {
+  margin-bottom: 0;
+}
+.sim-context-actions,
+.sim-global-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 12px;
+  margin-top: 22px;
+}
+.sim-action {
+  flex: 1 1 140px;
+}
+.sim-action button {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  text-align: left;
+  border: 1px solid #969ca3;
+  border-radius: 0;
+  color: #202328;
+  background: white;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.sim-action button:hover:enabled {
+  border-color: var(--sim-red);
+  color: #b71e23;
+  background: #fff7f7;
+}
+.sim-action small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--sim-muted);
+  margin-top: 6px;
+}
+.sim-global-actions {
+  border-top: 1px solid #dddfe2;
+  padding-top: 20px;
+}
+.sim-global-actions .sim-action button {
+  background: #f3f4f5;
+}
+.sim-no-incident {
+  padding: 20px 0 10px;
+}
+.sim-no-incident > span {
+  font-size: 48px;
+  color: #9298a0;
+}
+.sim-no-incident p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--sim-muted);
+}
+.sim-local-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 18px;
+  flex-wrap: wrap;
+}
+.sim-local-tabs button {
+  background: white;
+  border: 1px solid #c9cdd1;
+  padding: 9px;
+  min-height: 44px;
+  font-size: 12px;
+}
+.sim-local-tabs [aria-pressed="true"] {
+  border-color: var(--sim-red);
+  color: var(--sim-red);
+}
+.sim-dispatch {
+  border-left: 1px solid #d8dbdf;
+  padding-left: 22px;
+}
+.sim-live-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--sim-red);
+  border-radius: 50%;
+}
+.sim-live-announcement {
+  font-size: 12px;
+  color: var(--sim-muted);
+  line-height: 1.5;
+  margin-bottom: 15px;
+}
+.sim-dispatch-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.sim-dispatch-list li {
+  border-bottom: 1px solid #e0e2e4;
+}
+.sim-dispatch-list button {
+  border: 0;
+  border-left: 2px solid #858b94;
+  background: transparent;
+  padding: 12px 0 12px 12px;
+  width: 100%;
+  text-align: left;
+  margin: 8px 0;
+}
+.sim-dispatch-list .critical button,
+.sim-dispatch-list .escalated button {
+  border-color: var(--sim-red);
+}
+.sim-dispatch-list time {
+  display: block;
+  font-size: 10px;
+  color: var(--sim-muted);
+  font-variant-numeric: tabular-nums;
+}
+.sim-dispatch-list strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 5px 0;
+}
+.sim-dispatch-list small {
+  font-size: 11px;
+  color: var(--sim-muted);
+}
+.sim-radio {
+  display: flex;
+  gap: 8px;
+  padding: 14px 0;
+  border-bottom: 1px solid #dddfe2;
+}
+.sim-radio > span {
+  font-size: 20px;
+}
+.sim-radio strong {
+  font-size: 13px;
+}
+.sim-radio small {
+  display: block;
+  font-size: 11px;
+  color: var(--sim-muted);
+  margin-top: 8px;
+}
+.sim-radio p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 8px 0 0;
+}
+.sim-empty-note {
+  font-size: 12px;
+  color: var(--sim-muted);
+  line-height: 1.6;
+}
+.sim-recent {
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+}
+.sim-recent li {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0;
+  line-height: 1.5;
+}
+.sim-recent time {
+  color: var(--sim-muted);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.sim-briefing {
+  display: grid;
+  grid-template-columns: 110px 1.7fr 1fr;
+  gap: 30px;
+  padding: 36px 0;
+}
+.sim-briefing-number {
+  font-size: 70px;
+  color: var(--sim-red);
+  line-height: 1;
+  border-top: 5px solid var(--sim-red);
+  padding-top: 18px;
+}
+.sim-briefing-number span {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  margin-top: 16px;
+}
+.sim-briefing h1 {
+  font-size: clamp(34px, 4vw, 52px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  margin: 18px 0 25px;
+}
+.sim-briefing p {
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 560px;
+}
+.sim-briefing .quiet-note {
+  font-size: 12px;
+  margin: 20px 0;
+}
+.sim-briefing-route {
+  border-block: 1px solid #d8dbdf;
+  padding: 18px 0;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.sim-briefing-route span {
+  color: var(--sim-red);
+  margin: 0 9px;
+}
+.sim-briefing aside {
+  border-left: 1px solid #d8dbdf;
+  padding: 10px 0 0 30px;
+}
+.sim-briefing h2 {
+  font-size: 20px;
+}
+.sim-briefing ol {
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.sim-briefing li {
+  padding: 0 0 18px 10px;
+}
+.sim-training-stamp {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  line-height: 1.8;
+  border: 1px solid #a2a7ad;
+  color: var(--sim-muted);
+  padding: 15px;
+  margin-top: 20px;
+}
+.sim-connection {
+  border-left: 4px solid var(--sim-red);
+  padding: 16px 20px;
+  background: #fff3f3;
+  margin-bottom: 24px;
+}
+.sim-connection p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+.sim-connection button {
+  min-height: 44px;
+  padding: 10px 15px;
+  border: 1px solid #333;
+  background: white;
+}
+.sim-saving {
+  color: #767b82;
+  font-size: 12px;
+  margin-top: 20px;
+}
+.sim-blackbox {
+  margin-top: 35px;
+}
+.sim-blackbox h2 {
+  font-size: 34px;
+  margin: 10px 0 16px;
+}
+.sim-blackbox .sim-heading p {
+  line-height: 1.6;
+  max-width: 700px;
+}
+.sim-xp {
+  font-size: 44px;
+  color: var(--sim-red);
+}
+.sim-xp small {
+  display: block;
+  font-size: 11px;
+  color: var(--sim-muted);
+  text-align: right;
+}
+.sim-review-layout {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 48px;
+}
+.sim-filter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  margin-bottom: 25px;
+}
+.sim-filter select {
+  background: white;
+  padding: 12px;
+  border: 1px solid #999fa6;
+  min-height: 44px;
+  max-width: 70%;
+}
+.sim-blackbox-line {
+  list-style: none;
+  padding: 0;
+}
+.sim-blackbox-line > li {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 16px;
+  margin-bottom: 0;
+}
+.sim-blackbox-line time {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--sim-muted);
+  padding-top: 3px;
+}
+.sim-blackbox-line > li > div {
+  border-left: 1px solid #cbd0d5;
+  padding: 0 0 28px 20px;
+  position: relative;
+}
+.sim-blackbox-line > li > div:before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  background: var(--sim-red);
+  position: absolute;
+  top: 5px;
+  left: -4px;
+  border-radius: 50%;
+}
+.sim-blackbox-line strong {
+  font-size: 16px;
+}
+.sim-blackbox-line p {
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 10px 0;
+}
+.sim-deltas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  list-style: none;
+  padding: 0;
+  font-size: 11px;
+}
+.sim-deltas .loss {
+  color: #a21d24;
+}
+.sim-deltas .gain {
+  color: #316450;
+}
+.sim-deltas span {
+  color: var(--sim-muted);
+}
+.sim-counterfactual {
+  border-left: 1px solid #dadde0;
+  padding-left: 25px;
+}
+.sim-counterfactual h3 {
+  font-size: 20px;
+  margin: 20px 0;
+}
+.sim-counterfactual details {
+  border-block-end: 1px solid #d8dbdf;
+  padding: 14px 0;
+}
+.sim-counterfactual summary {
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.6;
+  min-height: 30px;
+}
+.sim-counterfactual p,
+.sim-counterfactual li {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.sim-counterfactual dl {
+  font-size: 12px;
+}
+.sim-counterfactual dl > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  gap: 8px;
+}
+.sim-counterfactual dd {
+  margin: 0;
+  text-align: right;
+}
+.sim-counterfactual h4 {
+  font-size: 12px;
+}
+.sim-restart {
+  margin-top: 25px;
+}
+@media (max-width: 1100px) {
+  .sim-operation {
+    grid-template-columns: minmax(230px, 0.8fr) minmax(310px, 1.2fr);
+  }
+  .sim-dispatch {
+    grid-column: 1/-1;
+    border-left: 0;
+    border-top: 1px solid #ddd;
+    padding: 24px 0 0;
+  }
+  .sim-dispatch-list {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .sim-dispatch-list li {
+    flex: 1 1 180px;
+  }
+  .sim-briefing {
+    grid-template-columns: 80px 1fr;
+  }
+  .sim-briefing aside {
+    grid-column: 2;
+    padding-left: 0;
+    border-left: 0;
+  }
+  .sim-metrics > div {
+    padding: 0 10px;
+  }
+}
+@media (max-width: 700px) {
+  .simulation {
+    padding-top: 12px;
+  }
+  .sim-heading {
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .sim-heading h1 {
+    font-size: 24px;
+  }
+  .sim-clock strong {
+    font-size: 27px;
+  }
+  .sim-clock small {
+    font-size: 8px;
+    max-width: 120px;
+  }
+  .sim-clock span {
+    font-size: 11px;
+  }
+  .sim-route li {
+    max-width: 26%;
+    font-size: 11px;
+  }
+  .sim-route small {
+    font-size: 10px;
+  }
+  .sim-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px 0;
+  }
+  .sim-metrics > div,
+  .sim-metrics > div:first-child {
+    padding: 0 8px;
+  }
+  .sim-metrics > div:nth-child(3n) {
+    border: 0;
+  }
+  .sim-metrics dt {
+    font-size: 10px;
+  }
+  .sim-metrics dd {
+    font-size: 21px;
+  }
+  .sim-operation {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .sim-carriage-panel,
+  .sim-tablet,
+  .sim-dispatch {
+    width: 100%;
+  }
+  .sim-map {
+    min-height: 0;
+    padding: 16px 12px 16px 8px;
+  }
+  .sim-carriage {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    border-radius: 28px;
+    padding: 16px 10px;
+  }
+  .sim-carriage:before {
+    grid-column: 1/-1;
+    margin: 0;
+  }
+  .sim-zone {
+    margin: 0;
+    min-height: 90px;
+  }
+  .sim-zone strong {
+    font-size: 12px;
+  }
+  .sim-zone-seats {
+    gap: 4px;
+  }
+  .sim-zone-seats i {
+    width: 13px;
+    height: 16px;
+  }
+  .sim-zone-info {
+    font-size: 9px;
+  }
+  .sim-tablet {
+    padding: 18px;
+    min-height: 0;
+  }
+  .sim-tablet h2 {
+    font-size: 22px;
+  }
+  .sim-observation {
+    font-size: 19px;
+  }
+  .sim-equipment {
+    margin-top: 20px;
+  }
+  .sim-equipment ul {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
+  }
+  .sim-equipment li {
+    font-size: 11px;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sim-equipment li span {
+    text-align: left;
+  }
+  .sim-briefing {
+    display: block;
+    padding: 20px 0;
+  }
+  .sim-briefing-number {
+    display: none;
+  }
+  .sim-briefing h1 {
+    font-size: 39px;
+  }
+  .sim-briefing aside {
+    border-top: 1px solid #ddd;
+    margin-top: 35px;
+    padding-top: 24px;
+  }
+  .sim-briefing p {
+    font-size: 15px;
+  }
+  .sim-review-layout {
+    display: block;
+  }
+  .sim-counterfactual {
+    border: 0;
+    padding: 0;
+  }
+  .sim-blackbox h2 {
+    font-size: 26px;
+  }
+  .sim-blackbox-line > li {
+    grid-template-columns: 53px 1fr;
+    gap: 8px;
+  }
+  .sim-blackbox-line time {
+    font-size: 10px;
+  }
+  .sim-blackbox-line > li > div {
+    padding-left: 14px;
+  }
+  .sim-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sim-filter select {
+    max-width: 100%;
+  }
+  .sim-xp {
+    font-size: 30px;
+  }
+  .sim-xp small {
+    font-size: 9px;
+  }
+  .sim-heading .micro-label {
+    font-size: 9px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .simulation * {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

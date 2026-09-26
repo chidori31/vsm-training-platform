@@ -21,9 +21,17 @@ def sensitive_action(method: str, path: str) -> str | None:
         return None
     if path == "/api/v1/sessions":
         return "start"
+    if path == "/api/v1/simulations":
+        return "simulation_start"
     if path == "/api/v1/shifts":
         return "shift_start"
     parts = path.strip("/").split("/")
+    if (
+        len(parts) == 5
+        and parts[:3] == ["api", "v1", "simulations"]
+        and parts[4] == "actions"
+    ):
+        return "simulation_action"
     if (
         len(parts) == 5
         and parts[:3] == ["api", "v1", "sessions"]

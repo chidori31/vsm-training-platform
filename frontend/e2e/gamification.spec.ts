@@ -45,7 +45,7 @@ async function passConflict(page: Page) {
 test("three real completions grow profile, unlock behavior awards and enter all organization rankings", async ({
   page,
 }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/#training");
   await openProgress(page);
   const changed = page.waitForResponse(
     (r) =>
@@ -107,7 +107,7 @@ test("mobile passport recovers a failed query, switches personas, and supports k
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/#training");
   await expect(
     page.getByRole("region", { name: "Личная сводка" }),
   ).toBeVisible();

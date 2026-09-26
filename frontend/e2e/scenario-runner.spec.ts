@@ -25,7 +25,7 @@ interface SessionResponse {
 }
 
 async function startScenario(page: Page, title = /конфликт пассажиров/i) {
-  await page.goto("/");
+  await page.goto("/#training");
   await page.getByRole("radio", { name: title }).check();
   const response = page.waitForResponse(
     (response) =>
@@ -90,7 +90,7 @@ test("catalogue exposes loading and recovers after a network error", async ({
     }
     await route.continue();
   });
-  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.goto("/#training", { waitUntil: "domcontentloaded" });
   await expect(
     page
       .getByRole("status")
@@ -321,7 +321,7 @@ test("mobile keeps unknown long unbroken titles and choices visible without over
     state.available_choices[0].text = choiceText;
     await route.fulfill({ response, json: state });
   });
-  await page.goto("/");
+  await page.goto("/#training");
   const titleHeading = page.getByRole("heading", { name: title, exact: true });
   await expect(titleHeading).toBeVisible();
   await expect(titleHeading).toHaveText(title);
@@ -378,7 +378,7 @@ test("mobile keyboard flow respects reduced motion and has no horizontal overflo
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/#training");
   const scenario = page.getByRole("radio", { name: /конфликт пассажиров/i });
   await scenario.focus();
   await page.keyboard.press("Space");

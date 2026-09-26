@@ -81,18 +81,25 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(UseCaseError)
     async def use_case_error(request: Request, exc: UseCaseError) -> JSONResponse:
-        await run_in_threadpool(
-            audit_request_rejection,
-            request,
-            "conflicting"
-            if exc.code in {"idempotency_conflict", "shift_step_conflict"}
-            else "rejected",
-            exc.code,
-        )
+        if not exc.audit_recorded:
+            await run_in_threadpool(
+                audit_request_rejection,
+                request,
+                "conflicting"
+                if exc.code
+                in {
+                    "idempotency_conflict",
+                    "shift_step_conflict",
+                    "simulation_revision_conflict",
+                }
+                else "rejected",
+                exc.code,
+            )
         status = {
             "unauthorized": 401,
             "notification_not_found": 404,
             "shift_not_found": 404,
+            "simulation_not_found": 404,
             "demo_auth_disabled": 404,
             "idempotency_conflict": 409,
             "result_not_ready": 409,

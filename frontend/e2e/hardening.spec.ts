@@ -12,7 +12,7 @@ test("happy path keeps commands free of scores and reaches a durable two-decisio
       commands.push(request.postDataJSON() as Record<string, unknown>);
     }
   });
-  await page.goto("/");
+  await page.goto("/#training");
   await page.getByRole("radio", { name: /забытая вещь/i }).check();
   await page
     .getByRole("button", { name: "Начать сценарий", exact: true })

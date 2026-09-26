@@ -1,3 +1,37 @@
+# Операционная симуляция — основной режим
+
+Новый ограниченный домен `domain/simulation.py` работает независимо от FastAPI,
+React и БД. В отличие от одноузлового ScenarioSession, SimulationState содержит
+несколько IncidentState и очередь Consequence. Бизнес-операции `start/advance/act`
+возвращают детерминированное состояние. Наблюдаемая проекция скрывает причины и
+будущие события; итоговый debrief строится по структурированному журналу.
+
+[Проектирование](SIMULATION_DESIGN.md) · [Механика, контент и восстановление](SIMULATION.md).
+
+```mermaid
+sequenceDiagram
+ participant UI as Схема вагона
+ participant API as FastAPI
+ participant DB as PostgreSQL
+ participant D as Simulation domain
+ UI->>API: action_id, command_id, expected_revision
+ API->>DB: lock owned simulation row
+ API->>DB: server clock
+ API->>D: advance до серверного elapsed
+ API->>DB: проверить receipt команды
+ alt команда уже принята
+ API-->>UI: текущая observable projection
+ else новая команда
+ API->>D: проверить revision / выполнить act
+ D-->>API: facts, consequences, journal, metrics
+ API->>DB: snapshot + receipt + audit (+ ledger при завершении)
+ API-->>UI: observable projection
+ end
+ Note over API,DB: Наступившие временные события сохраняются и при отказе новой команды
+```
+
+Ниже сохранена архитектура отдельных тренировок и других модулей сервиса.
+
 # Доменная архитектура ВСМ
 
 ## Назначение и границы

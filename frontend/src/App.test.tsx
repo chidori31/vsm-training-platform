@@ -15,6 +15,7 @@ vi.mock("./runner/useScenarioRunner");
 let runner: ReturnType<typeof useScenarioRunner>;
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/#training");
   runner = {
     writeResource: vi.fn(async () => ({})),
     openSession: vi.fn(async () => {}),
@@ -234,5 +235,21 @@ describe("scenario runner interface", () => {
       screen.getByRole("button", { name: "Выбрать другую ситуацию" }),
     );
     expect(runner.leave).toHaveBeenCalledOnce();
+  });
+});
+
+describe("primary operational mode", () => {
+  it("opens the working shift by default and keeps training in its own navigation", async () => {
+    window.history.replaceState(null, "", "/");
+    runner.readResource = vi.fn(async () => ({ simulation: null }));
+    render(<App />);
+    expect(
+      await screen.findByRole("button", { name: /Принять рабочую смену/ }),
+    ).toBeVisible();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Тренировки" }));
+    expect(
+      screen.getByRole("button", { name: "Начать сценарий" }),
+    ).toBeVisible();
   });
 });

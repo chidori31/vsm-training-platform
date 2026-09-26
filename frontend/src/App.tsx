@@ -15,6 +15,7 @@ import { CareerPanel, CompletionReward } from "./career/CareerPanel";
 import { Debrief } from "./learning/Debrief";
 import { TodayBriefing } from "./shift/TodayBriefing";
 import { ShiftPanel, PersonalBriefing } from "./shift/ShiftPanel";
+import { SimulationPanel } from "./simulation/SimulationPanel";
 import { RetentionPanel } from "./retention/RetentionPanel";
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
@@ -157,9 +158,23 @@ function RouteLine({ session }: { session: SessionSnapshot }) {
 
 export default function App() {
   const runner = useScenarioRunner();
-  const [screen, setScreen] = useState<
-    "play" | "profile" | "leaderboard" | "events"
-  >("play");
+  const [screen, setScreenState] = useState<
+    "play" | "simulation" | "profile" | "leaderboard" | "events"
+  >(() => (window.location.hash === "#training" ? "play" : "simulation"));
+  function setScreen(
+    next: "play" | "simulation" | "profile" | "leaderboard" | "events",
+  ) {
+    window.history.replaceState(
+      null,
+      "",
+      next === "play"
+        ? "#training"
+        : next === "simulation"
+          ? window.location.pathname
+          : `#${next}`,
+    );
+    setScreenState(next);
+  }
   const [selectedId, setSelectedId] = useState("");
   const [eventScenario, setEventScenario] = useState<ScenarioSummary | null>(
     null,
@@ -243,10 +258,16 @@ export default function App() {
         {session?.status !== "active" && runner.phase !== "loading" && (
           <nav className="career-navigation" aria-label="Учебная смена">
             <button
+              aria-current={screen === "simulation" ? "page" : undefined}
+              onClick={() => setScreen("simulation")}
+            >
+              Смена
+            </button>
+            <button
               aria-current={screen === "play" ? "page" : undefined}
               onClick={() => setScreen("play")}
             >
-              Смена
+              Тренировки
             </button>
             <button
               disabled={!runner.identity || runner.busy}
@@ -272,7 +293,29 @@ export default function App() {
             <span>{runner.identity?.display_name}</span>
           </nav>
         )}
-        {screen !== "play" && session?.status !== "active" ? (
+        {screen === "simulation" &&
+        session?.status !== "active" &&
+        runner.phase !== "loading" ? (
+          runner.identity ? (
+            <SimulationPanel
+              key={runner.identity.id}
+              read={runner.readResource}
+              write={runner.writeResource}
+              identityId={runner.identity.id}
+            />
+          ) : (
+            <div role="alert">
+              <p>
+                {runner.error || "Не удалось подключиться к учебной смене."}
+              </p>
+              <button onClick={() => void runner.reconnect()}>
+                Восстановить связь
+              </button>
+            </div>
+          )
+        ) : screen !== "play" &&
+          screen !== "simulation" &&
+          session?.status !== "active" ? (
           <>
             {runner.error && (
               <div className="connection-notice" role="alert">

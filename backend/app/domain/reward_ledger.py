@@ -1,9 +1,10 @@
-"""Dormant, sequential reference reducer for non-monetary earned points.
+"""Sequential reference reducer for non-monetary earned points.
 
 No receipt or reward is persisted here. A caller must atomically persist the
 receipt and ledger transition with concurrency control before live activation.
 Immutability of a Python value is not durable or concurrent exactly-once delivery.
-Existing training rewards are independent and are not connected to this module.
+Scenario-session rewards remain independent. Operational simulations persist
+this reducer's completion receipt and transaction atomically in their own ledger.
 """
 
 from dataclasses import dataclass

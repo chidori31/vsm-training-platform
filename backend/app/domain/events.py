@@ -1,8 +1,9 @@
-"""Dormant event contracts; construction alone does not verify an external fact.
+"""Event contracts; construction alone does not verify an external fact.
 
 An application adapter must authenticate the source, resolve the subject and
 validate the fact before using DomainEvent for rewards. Client sync labels are
-informational and never confer that authority. No adapter or transport is wired.
+informational and never confer that authority. The operational simulation server
+constructs its completion facts from replay-verified authoritative state.
 """
 
 import json

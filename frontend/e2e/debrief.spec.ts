@@ -32,7 +32,7 @@ interface Debrief {
 test("real completion explains both decisions and alternatives and survives refresh", async ({
   page,
 }, info) => {
-  await page.goto("/");
+  await page.goto("/#training");
   await start(page, /конфликт пассажиров/i);
   await page
     .getByRole("button", {
@@ -93,7 +93,7 @@ test("mobile repeated service problems appear in real competency analytics with 
   page,
 }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/#training");
   await profile(page);
   await page
     .getByRole("combobox", { name: "Учебный проводник" })

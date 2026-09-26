@@ -49,6 +49,8 @@ class RatePolicy:
             "decision": 240,
             "shift_start": 30,
             "shift_advance": 120,
+            "simulation_start": 30,
+            "simulation_action": 120,
         }
         if action not in defaults:
             raise ValueError("Unknown sensitive action")

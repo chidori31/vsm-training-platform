@@ -1,9 +1,10 @@
 """Transactional awards and small-demo projections from completed results."""
 
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import Engine, func, select
+from sqlalchemy import Engine, func, select, union_all
 from sqlalchemy.orm import Session
 
 from app.application.errors import UseCaseError
@@ -18,6 +19,7 @@ from app.persistence.achievements import AchievementUnlockRecord
 from app.persistence.gamification import SessionReward
 from app.persistence.identity import UserProfile
 from app.persistence.sessions import SessionRepository, StoredSession
+from app.persistence.simulations import SimulationReward
 
 
 def fact_from(record: SessionReward) -> RewardFact:
@@ -151,6 +153,27 @@ class GamificationService:
                     )
                 )
             }
+            simulation_rewards = list(
+                database.scalars(
+                    select(SimulationReward)
+                    .where(SimulationReward.employee_id == employee_id)
+                    .order_by(SimulationReward.awarded_at)
+                )
+            )
+            total_xp = progress.xp + sum(row.xp for row in simulation_rewards)
+            level, level_start, next_level = level_for(total_xp)
+            simulation_achievements: dict[str, datetime] = {}
+            competencies = dict(progress.competencies)
+            for simulation_reward in simulation_rewards:
+                gains = simulation_reward.event["payload"].get("competency_deltas", {})
+                for key in ("regulation", "communication"):
+                    gain = int(gains.get(key, 0))
+                    if gain > 0:
+                        competencies[key] = competencies.get(key, 0) + gain
+                for name in simulation_reward.achievements:
+                    simulation_achievements.setdefault(
+                        name, simulation_reward.awarded_at
+                    )
             reward = next(
                 (row for row in records if row.session_id == session_id), None
             )
@@ -158,15 +181,15 @@ class GamificationService:
                 "id": profile.id,
                 "display_name": profile.display_name,
                 "organization": organization(profile),
-                "xp": progress.xp,
-                "level": progress.level,
-                "level_start_xp": progress.level_start,
-                "next_level_xp": progress.next_level,
-                "completed_sessions": len(records),
+                "xp": total_xp,
+                "level": level,
+                "level_start_xp": level_start,
+                "next_level_xp": next_level,
+                "completed_sessions": len(records) + len(simulation_rewards),
                 "rule_version": 1,
                 "competencies": [
                     {"competency_id": key, "value": value}
-                    for key, value in progress.competencies
+                    for key, value in sorted(competencies.items())
                 ],
                 "achievements": [
                     {
@@ -186,6 +209,19 @@ class GamificationService:
                         else None,
                     }
                     for a in ACHIEVEMENTS
+                ]
+                + [
+                    dict(
+                        id="simulation:" + name,
+                        name=name,
+                        description="Учебное достижение операционной смены",
+                        target=1,
+                        current=1,
+                        unlocked=True,
+                        unlocked_at=at,
+                        session_id=None,
+                    )
+                    for name, at in simulation_achievements.items()
                 ],
                 "reward": {
                     "session_id": reward.session_id,
@@ -238,17 +274,27 @@ class GamificationService:
             with Session(self.engine) as database, database.begin():
                 settle_profile(database, identity)
         with Session(self.engine) as database:
+            ledger = union_all(
+                select(
+                    SessionReward.employee_id.label("employee_id"),
+                    SessionReward.xp.label("xp"),
+                ),
+                select(
+                    SimulationReward.employee_id.label("employee_id"),
+                    SimulationReward.xp.label("xp"),
+                ),
+            ).subquery()
             rows = database.execute(
                 select(
                     UserProfile.id,
                     UserProfile.display_name,
-                    func.sum(SessionReward.xp).label("xp"),
-                    func.count(SessionReward.session_id).label("completed"),
+                    func.sum(ledger.c.xp).label("xp"),
+                    func.count().label("completed"),
                 )
-                .join(SessionReward, SessionReward.employee_id == UserProfile.id)
+                .join(ledger, ledger.c.employee_id == UserProfile.id)
                 .where(UserProfile.id.in_(ids))
                 .group_by(UserProfile.id, UserProfile.display_name)
-                .order_by(func.sum(SessionReward.xp).desc(), UserProfile.id)
+                .order_by(func.sum(ledger.c.xp).desc(), UserProfile.id)
             ).all()
         items = []
         rank, previous = 0, None

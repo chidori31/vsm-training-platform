@@ -177,7 +177,7 @@ function Profile({ read, identityId, busy, switchPersona }: Props) {
             {p.organization.brigade_name}
           </p>
           <span className="pass-count">
-            Завершённых ситуаций: {p.completed_sessions}
+            Завершённых тренировок: {p.completed_sessions}
           </span>
         </div>
         <div className="pass-level">
@@ -222,7 +222,7 @@ function Profile({ read, identityId, busy, switchPersona }: Props) {
       >
         <div className="action-heading">
           <h2 id="competencies-title">Профессиональные навыки</h2>
-          <span>Очки из завершённых ситуаций</span>
+          <span>Очки из завершённых тренировок</span>
         </div>
         {p.competencies.length === 0 ? (
           <p className="career-empty">
@@ -374,7 +374,7 @@ function Leaderboard({ read }: { read: ReadResource }) {
           {board.items.length === 0 ? (
             <p className="career-empty">
               {board.assigned
-                ? "Пока нет завершённых ситуаций. Пройдите первую — ваш результат появится на табло."
+                ? "Пока нет завершённых тренировок. Пройдите первую — ваш результат появится на табло."
                 : "Подразделение пока не назначено. Рейтинг станет доступен после назначения."}
             </p>
           ) : (
