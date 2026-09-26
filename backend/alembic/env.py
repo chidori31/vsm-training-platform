@@ -10,7 +10,9 @@ from app.persistence import (  # noqa: F401
     identity,
     retention,
     scenarios,
+    security,
     sessions,
+    shifts,
 )
 
 target_metadata = Base.metadata

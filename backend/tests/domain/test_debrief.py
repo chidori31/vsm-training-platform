@@ -77,6 +77,124 @@ def play(scenario, choices=("gain",), *, sid="s", at=NOW, loyalty=50, policy=Non
     return session
 
 
+def test_professional_assessment_uses_actual_quality_not_speed_or_xp():
+    from app.domain.debrief import debrief_for
+
+    scenario = graph(
+        (
+            Choice("safe", "Помочь", "done", effects=(AddScore(SAFETY, 2),)),
+            Choice("risk", "Рискнуть", "done", effects=(AddScore(SAFETY, -2),)),
+            Choice("neutral", "Выслушать", "done"),
+        ),
+        timed=True,
+    )
+    strong = debrief_for(scenario, play(scenario, ("safe",))).decisions[0]
+    critical = debrief_for(scenario, play(scenario, ("risk",))).decisions[0]
+    neutral = debrief_for(scenario, play(scenario, ("neutral",))).decisions[0]
+    assert strong.assessment.status == "strong"
+    assert critical.assessment.status == "critical_error"
+    assert critical.assessment.is_critical is True
+    assert neutral.assessment.status == "neutral"
+    assert "безопасност" in critical.assessment.explanation.lower()
+
+
+def test_unavoidable_timeout_is_not_classified_as_a_learner_critical_error():
+    from app.domain.debrief import debrief_for
+
+    scenario = graph(
+        (
+            Choice(
+                "closed",
+                "Помочь",
+                "done",
+                condition=Condition(predicates=(Predicate(SAFETY, Operator.GT, 100),)),
+            ),
+        ),
+        timed=True,
+    )
+    result = debrief_for(scenario, play(scenario, ("__timeout__",)))
+    assert result.decisions[0].assessment.status == "neutral"
+
+
+def test_performance_weeks_exclude_timeouts_from_measured_reaction_and_deduplicate():
+    from app.domain.learning_analytics import competency_analytics
+
+    scenario = graph(timed=True)
+    sunday = play(
+        scenario, sid="sunday", at=datetime(2026, 9, 27, 12, tzinfo=UTC), loyalty=60
+    )
+    monday = play(
+        scenario, sid="monday", at=datetime(2026, 9, 28, 12, tzinfo=UTC), loyalty=70
+    )
+    timed_out = play(
+        scenario,
+        ("__timeout__",),
+        sid="timeout",
+        at=datetime(2026, 9, 28, 13, tzinfo=UTC),
+    )
+    active = play(scenario, (), sid="active")
+    result = competency_analytics(
+        (
+            (scenario, timed_out),
+            (scenario, monday),
+            (scenario, sunday),
+            (scenario, sunday),
+            (scenario, active),
+        )
+    )
+    performance = result.performance
+    assert performance.measured_decision_count == 2
+    assert performance.average_decision_seconds == 2
+    assert (performance.best_loyalty, performance.best_safety) == (70, 50)
+    assert [week.week_start for week in performance.weeks] == [
+        datetime(2026, 9, 21, tzinfo=UTC),
+        datetime(2026, 9, 28, tzinfo=UTC),
+    ]
+    assert [week.completed_sessions for week in performance.weeks] == [1, 2]
+    assert performance.weeks[1].decision_count == 2
+    assert performance.weeks[1].timeout_count == 1
+    assert performance.weeks[1].average_decision_seconds == 2
+    assert performance.weeks[1].average_loyalty == 60
+
+
+def test_empty_and_timeout_only_performance_has_no_invented_reaction():
+    from app.domain.learning_analytics import competency_analytics
+
+    empty = competency_analytics(()).performance
+    assert empty.weeks == ()
+    assert empty.best_safety is None and empty.average_decision_seconds is None
+    scenario = graph(timed=True)
+    timed_out = play(scenario, ("__timeout__",))
+    performance = competency_analytics(((scenario, timed_out),)).performance
+    assert performance.measured_decision_count == 0
+    assert performance.average_decision_seconds is None
+    assert performance.weeks[0].average_decision_seconds is None
+
+
+def test_week_uses_utc_completion_even_when_entry_and_local_date_are_different():
+    from datetime import timezone
+
+    from app.domain.learning_analytics import competency_analytics
+
+    scenario = graph()
+    crossed_midnight = play(
+        scenario, sid="midnight", at=datetime(2026, 9, 27, 23, 59, 59, tzinfo=UTC)
+    )
+    local_monday = play(
+        scenario,
+        sid="local-monday",
+        at=datetime(2026, 9, 28, 0, 30, tzinfo=timezone(timedelta(hours=3))),
+    )
+    weeks = competency_analytics(
+        ((scenario, crossed_midnight), (scenario, local_monday))
+    ).performance.weeks
+    assert [week.week_start for week in weeks] == [
+        datetime(2026, 9, 21, tzinfo=UTC),
+        datetime(2026, 9, 28, tzinfo=UTC),
+    ]
+    assert [week.completed_sessions for week in weeks] == [1, 1]
+
+
 def test_debrief_explains_actual_clamped_scores_and_zero_effects():
     from app.domain.debrief import debrief_for
 

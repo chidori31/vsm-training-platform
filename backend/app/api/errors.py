@@ -6,8 +6,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 
+from app.api.anti_cheat import audit_request_rejection
 from app.application.errors import UseCaseError
 from app.application.sessions import ScenarioNotFound, SessionNotFound
 from app.domain.common import DomainError
@@ -32,7 +34,7 @@ class ErrorResponse(BaseModel):
 
 ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     code: {"model": ErrorResponse}
-    for code in (401, 404, 405, 409, 413, 422, 500, 501, 503)
+    for code in (401, 404, 405, 409, 413, 422, 429, 500, 501, 503)
 }
 
 
@@ -64,6 +66,9 @@ def install_error_handlers(app: FastAPI) -> None:
     async def validation_error(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
+        await run_in_threadpool(
+            audit_request_rejection, request, "rejected", "validation_error"
+        )
         details = [
             ErrorDetail(
                 location=list(item["loc"]), message=item["msg"], type=item["type"]
@@ -76,9 +81,18 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(UseCaseError)
     async def use_case_error(request: Request, exc: UseCaseError) -> JSONResponse:
+        await run_in_threadpool(
+            audit_request_rejection,
+            request,
+            "conflicting"
+            if exc.code in {"idempotency_conflict", "shift_step_conflict"}
+            else "rejected",
+            exc.code,
+        )
         status = {
             "unauthorized": 401,
             "notification_not_found": 404,
+            "shift_not_found": 404,
             "demo_auth_disabled": 404,
             "idempotency_conflict": 409,
             "result_not_ready": 409,
@@ -93,12 +107,18 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(SessionNotFound)
     async def session_not_found(request: Request, exc: SessionNotFound) -> JSONResponse:
+        await run_in_threadpool(
+            audit_request_rejection, request, "rejected", "session_not_found"
+        )
         return error_response(404, "session_not_found", "Session not found")
 
     @app.exception_handler(ScenarioNotFound)
     async def scenario_not_found(
         request: Request, exc: ScenarioNotFound
     ) -> JSONResponse:
+        await run_in_threadpool(
+            audit_request_rejection, request, "rejected", "scenario_not_found"
+        )
         return error_response(404, "scenario_not_found", "Scenario version not found")
 
     @app.exception_handler(SQLAlchemyError)
@@ -107,6 +127,9 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(DomainError)
     async def domain_error(request: Request, exc: DomainError) -> JSONResponse:
+        await run_in_threadpool(
+            audit_request_rejection, request, "rejected", "domain_conflict"
+        )
         return error_response(409, "domain_conflict", str(exc))
 
     @app.exception_handler(HTTPException)
@@ -114,6 +137,7 @@ def install_error_handlers(app: FastAPI) -> None:
         code = {
             404: "not_found",
             405: "method_not_allowed",
+            429: "rate_limited",
             503: "database_unavailable",
         }.get(exc.status_code, "http_error")
         return error_response(

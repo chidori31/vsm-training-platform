@@ -12,6 +12,12 @@ export interface CompetencyEffect {
   delta: number;
 }
 export interface DebriefDecision {
+  assessment?: {
+    status: "critical_error" | "attention" | "strong" | "neutral";
+    title: string;
+    explanation: string;
+    is_critical: boolean;
+  };
   sequence: number;
   decision_id: string;
   node_id: string;
@@ -79,6 +85,21 @@ export interface CompetencyAnalysis {
   }[];
 }
 export interface AnalyticsData {
+  performance?: {
+    measured_decision_count: number;
+    average_decision_seconds: number | null;
+    best_loyalty: number | null;
+    best_safety: number | null;
+    weeks: {
+      week_start: string;
+      completed_sessions: number;
+      decision_count: number;
+      timeout_count: number;
+      average_decision_seconds: number | null;
+      average_loyalty: number;
+      average_safety: number;
+    }[];
+  };
   rule_version: 1;
   total_sessions: number;
   completed_sessions: number;
@@ -193,6 +214,17 @@ export function parseDebrief(value: unknown): DebriefData {
     date(decision.decided_at);
     number(decision.elapsed_seconds, 0);
     boolean(decision.was_timeout);
+    if (decision.assessment !== undefined) {
+      const assessment = object(decision.assessment);
+      check(
+        ["critical_error", "attention", "strong", "neutral"].includes(
+          String(assessment.status),
+        ),
+      );
+      text(assessment.title);
+      text(assessment.explanation);
+      boolean(assessment.is_critical);
+    }
     for (const key of ["loyalty", "safety"]) {
       const score = object(decision[key]);
       for (const field of ["before", "after", "delta", "requested_delta"])
@@ -227,6 +259,27 @@ export function parseDebrief(value: unknown): DebriefData {
 export function parseAnalytics(value: unknown): AnalyticsData {
   const data = object(value);
   check(data.rule_version === 1);
+  if (data.performance !== undefined) {
+    const performance = object(data.performance);
+    integer(performance.measured_decision_count);
+    if (performance.average_decision_seconds !== null)
+      number(performance.average_decision_seconds, 0);
+    for (const key of ["best_loyalty", "best_safety"])
+      if (performance[key] !== null)
+        integer(performance[key], -Number.MAX_SAFE_INTEGER);
+    const weeks = list(performance.weeks).map(object);
+    unique(weeks, "week_start");
+    for (const week of weeks) {
+      date(week.week_start);
+      integer(week.completed_sessions, 1);
+      integer(week.decision_count);
+      integer(week.timeout_count);
+      if (week.average_decision_seconds !== null)
+        number(week.average_decision_seconds, 0);
+      number(week.average_loyalty);
+      number(week.average_safety);
+    }
+  }
   for (const key of [
     "total_sessions",
     "completed_sessions",

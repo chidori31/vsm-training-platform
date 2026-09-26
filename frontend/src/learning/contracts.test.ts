@@ -3,6 +3,14 @@ import { parseAnalytics, parseDebrief } from "./contracts";
 import { analyticsFixture, debriefFixture } from "./testFixtures";
 
 describe("learning read model contracts", () => {
+  it("rejects nonfinite performance and unknown server assessments", () => {
+    const data = analyticsFixture();
+    data.performance.average_decision_seconds = NaN;
+    expect(() => parseAnalytics(data)).toThrow(/некорректный/);
+    const report = debriefFixture();
+    report.decisions[0].assessment.status = "perfect";
+    expect(() => parseDebrief(report)).toThrow(/некорректный/);
+  });
   it("accepts server effects including negative, unchanged and clamped values", () => {
     const parsed = parseDebrief(debriefFixture());
     expect(parsed.decisions[0].loyalty).toMatchObject({

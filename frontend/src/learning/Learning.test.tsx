@@ -5,6 +5,45 @@ import { CompetencyAnalytics } from "./CompetencyAnalytics";
 import { analyticsFixture, debriefFixture } from "./testFixtures";
 
 describe("decision debrief", () => {
+  it("expands individual route events and filters using the server assessment", async () => {
+    const data = debriefFixture();
+    data.decisions.push({
+      ...data.decisions[0],
+      sequence: 2,
+      decision_id: "d2",
+      choice_text: "Второе решение",
+      assessment: {
+        status: "critical_error",
+        title: "Критическое решение требует разбора",
+        explanation: "Сервер выявил снижение безопасности.",
+        is_critical: true,
+      },
+    });
+    data.summary.decision_count = 2;
+    render(
+      <Debrief
+        read={async () => data}
+        sessionId="session-1"
+        identityId="one"
+      />,
+    );
+    const second = await screen.findByText("Второе решение");
+    const details = second.closest("details")!;
+    expect(details).not.toHaveAttribute("open");
+    fireEvent.click(second.closest("summary")!);
+    expect(details).toHaveAttribute("open");
+    expect(
+      screen.getByText("Сервер выявил снижение безопасности."),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Требует внимания" }));
+    expect(
+      screen.queryByText("Объяснить порядок действий"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Второе решение")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Сильные решения" }));
+    expect(screen.getByText("Объяснить порядок действий")).toBeVisible();
+    expect(screen.queryByText("Второе решение")).not.toBeInTheDocument();
+  });
   it("connects saved choices to consequences, both score reasons, skills and server advice", async () => {
     render(
       <Debrief
@@ -86,6 +125,29 @@ describe("decision debrief", () => {
 });
 
 describe("competency analytics", () => {
+  it("renders measured reaction and weekly server aggregates without mixing them with XP", async () => {
+    render(
+      <CompetencyAnalytics
+        read={async () => analyticsFixture()}
+        identityId="one"
+      />,
+    );
+    const performance = await screen.findByTestId("professional-performance");
+    expect(performance).toHaveTextContent("12,5");
+    expect(performance).toHaveTextContent("78");
+    expect(performance).toHaveTextContent("82");
+    expect(performance).toHaveTextContent("6 решений");
+    expect(
+      screen.getByRole("table", { name: "Прогресс по неделям" }),
+    ).toHaveTextContent("12,5");
+    expect(
+      screen.getByText(/Недели начинаются в понедельник, UTC/),
+    ).toBeVisible();
+    const skill = screen.getByTestId("competency-analysis-communication");
+    expect(
+      within(skill).getByRole("img", { name: /Динамика накопленных очков/ }),
+    ).toBeVisible();
+  });
   it("shows supplied evidence, trends, recurring patterns and per-version scenario statistics", async () => {
     render(
       <CompetencyAnalytics
@@ -121,6 +183,27 @@ describe("competency analytics", () => {
     expect(
       screen.getByRole("table", { name: "Статистика сценариев" }),
     ).toHaveTextContent("Нет завершений");
+  });
+  it("keeps missing reaction distinct from a measured zero-second choice", async () => {
+    const data = {
+      ...analyticsFixture(),
+      performance: {
+        measured_decision_count: 0,
+        average_decision_seconds: null,
+        best_loyalty: 50,
+        best_safety: 50,
+        weeks: [],
+      },
+    };
+    render(<CompetencyAnalytics read={async () => data} identityId="one" />);
+    const performance = await screen.findByTestId("professional-performance");
+    const reaction = within(performance)
+      .getByText("Среднее время решения")
+      .closest("div")!;
+    expect(reaction).toHaveTextContent("Нет данных");
+    expect(reaction).not.toHaveTextContent("0 сек.");
+    expect(within(performance).queryByRole("table")).not.toBeInTheDocument();
+    expect(performance).toHaveTextContent("первая запись недельного журнала");
   });
   it("explains an empty learning history without inventing weaknesses", async () => {
     const data = {

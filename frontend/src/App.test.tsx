@@ -16,6 +16,8 @@ let runner: ReturnType<typeof useScenarioRunner>;
 
 beforeEach(() => {
   runner = {
+    writeResource: vi.fn(async () => ({})),
+    openSession: vi.fn(async () => {}),
     identity: { id: "demo-employee", display_name: "Demo" },
     readResource: vi.fn(() => new Promise<unknown>(() => {})),
     switchPersona: vi.fn(async () => {}),

@@ -1,0 +1,358 @@
+{
+  "schema_version": 1,
+  "id": "shift-service-transfer",
+  "version": 2,
+  "title": "Сервис: короткая пересадка · сложная смена",
+  "cycle_policy": "forbid",
+  "start_node_id": "start",
+  "competency_ids": [
+    "communication",
+    "regulation"
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "text": "Пассажир с пересадкой. Пассажир спешит и просит исключение из порядка обслуживания. Это учебная ситуация; действия в реальной смене определяет утверждённый регламент.",
+      "time_limit_seconds": 25,
+      "choices": [
+        {
+          "id": "assess",
+          "text": "Уточнить запрос и организовать помощь, сохранив свободный проход",
+          "destination": "check",
+          "explanation": "Пассажир получил понятный план помощи; порядок обслуживания сохранён.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "safety_rating",
+              "delta": 4
+            },
+            {
+              "type": "add_score",
+              "metric": "passenger_loyalty",
+              "delta": 7
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": 2,
+              "competency_id": "regulation"
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": 2,
+              "competency_id": "communication"
+            }
+          ]
+        },
+        {
+          "id": "rush",
+          "text": "Выполнить просьбу сразу, не проверяя условия",
+          "destination": "escalation",
+          "explanation": "Спешка без проверки усиливает проблему: потребуется восстановить доверие и порядок.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "safety_rating",
+              "delta": -6
+            },
+            {
+              "type": "add_score",
+              "metric": "passenger_loyalty",
+              "delta": -5
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": -2,
+              "competency_id": "regulation"
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": -1,
+              "competency_id": "communication"
+            }
+          ]
+        }
+      ],
+      "timeout": {
+        "destination": "late",
+        "explanation": "Срок учебного решения истёк; ситуация требует восстановления и передачи информации.",
+        "effects": [
+          {
+            "type": "add_score",
+            "metric": "safety_rating",
+            "delta": -8
+          },
+          {
+            "type": "add_score",
+            "metric": "passenger_loyalty",
+            "delta": -3
+          },
+          {
+            "type": "add_score",
+            "metric": "competency",
+            "delta": -1,
+            "competency_id": "regulation"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check",
+      "text": "Первое действие изменило ситуацию. Теперь важно проверить результат и подтвердить дальнейший порядок.",
+      "choices": [
+        {
+          "id": "confirm",
+          "text": "Проверить результат и подтвердить договорённость",
+          "destination": "unexpected",
+          "explanation": "Проверка завершает действие и уменьшает риск повторной проблемы.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "safety_rating",
+              "delta": 6
+            },
+            {
+              "type": "add_score",
+              "metric": "passenger_loyalty",
+              "delta": 4
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": 2,
+              "competency_id": "regulation"
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": 1,
+              "competency_id": "communication"
+            }
+          ],
+          "condition": {
+            "predicates": [
+              {
+                "metric": "competency",
+                "competency_id": "regulation",
+                "operator": "gte",
+                "value": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "skip",
+          "text": "Считать вопрос решённым без проверки",
+          "destination": "done-bad",
+          "explanation": "Непроверенный результат оставляет риск повторного обращения.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "safety_rating",
+              "delta": -3
+            },
+            {
+              "type": "add_score",
+              "metric": "passenger_loyalty",
+              "delta": -2
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": -1,
+              "competency_id": "regulation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "escalation",
+      "text": "Пассажир недоволен, а исходная проблема осталась. Следующее действие может ограничить последствия, но не отменит первый выбор.",
+      "choices": [
+        {
+          "id": "recover",
+          "text": "Признать проблему, уточнить факты и восстановить порядок",
+          "destination": "done-recovered",
+          "explanation": "Последствия частично снижены; первоначальная потеря качества остаётся в журнале.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "safety_rating",
+              "delta": 3
+            },
+            {
+              "type": "add_score",
+              "metric": "passenger_loyalty",
+              "delta": 3
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": 1,
+              "competency_id": "regulation"
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": 2,
+              "competency_id": "communication"
+            }
+          ]
+        },
+        {
+          "id": "dismiss",
+          "text": "Закрыть обращение без уточнения",
+          "destination": "done-bad",
+          "explanation": "Проблема осталась нерешённой и доверие снизилось.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "safety_rating",
+              "delta": -3
+            },
+            {
+              "type": "add_score",
+              "metric": "passenger_loyalty",
+              "delta": -5
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": -2,
+              "competency_id": "regulation"
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": -2,
+              "competency_id": "communication"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "late",
+      "text": "Время истекло. Необходимо сообщить о незавершённом действии и согласовать восстановление.",
+      "choices": [
+        {
+          "id": "report",
+          "text": "Передать состояние ответственному и согласовать следующий шаг",
+          "destination": "done-recovered",
+          "explanation": "Передача состояния помогает восстановлению, но не отменяет таймаут.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "safety_rating",
+              "delta": 2
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": 1,
+              "competency_id": "regulation"
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": 1,
+              "competency_id": "communication"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "done-good",
+      "text": "Этап завершён: условия проверены, пассажиру объяснён результат, дальнейший порядок подтверждён.",
+      "terminal": true
+    },
+    {
+      "id": "done-bad",
+      "text": "Этап завершён с проблемой. В разборе сравните выбор и доступные альтернативы.",
+      "terminal": true
+    },
+    {
+      "id": "done-recovered",
+      "text": "Ситуация восстановлена частично. Первый выбор и последующее исправление показаны раздельно.",
+      "terminal": true
+    },
+    {
+      "id": "unexpected",
+      "text": "Дополнительное условие сложной смены: коллега сообщает об изменении обстановки. Прежнюю договорённость нужно проверить повторно.",
+      "time_limit_seconds": 20,
+      "choices": [
+        {
+          "id": "recheck",
+          "text": "Уточнить изменение и согласовать обновлённый порядок",
+          "destination": "done-good",
+          "explanation": "Повторная проверка сохраняет качество при изменении условий.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "safety_rating",
+              "delta": 4
+            },
+            {
+              "type": "add_score",
+              "metric": "passenger_loyalty",
+              "delta": 2
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": 2,
+              "competency_id": "regulation"
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": 1,
+              "competency_id": "communication"
+            }
+          ]
+        },
+        {
+          "id": "ignore",
+          "text": "Продолжить по прежнему плану без проверки",
+          "destination": "done-bad",
+          "explanation": "Изменившиеся условия не были учтены.",
+          "effects": [
+            {
+              "type": "add_score",
+              "metric": "safety_rating",
+              "delta": -6
+            },
+            {
+              "type": "add_score",
+              "metric": "competency",
+              "delta": -2,
+              "competency_id": "regulation"
+            }
+          ]
+        }
+      ],
+      "timeout": {
+        "destination": "late",
+        "explanation": "Изменение условий не обработано в срок.",
+        "effects": [
+          {
+            "type": "add_score",
+            "metric": "safety_rating",
+            "delta": -5
+          },
+          {
+            "type": "add_score",
+            "metric": "competency",
+            "delta": -1,
+            "competency_id": "regulation"
+          }
+        ]
+      }
+    }
+  ]
+}

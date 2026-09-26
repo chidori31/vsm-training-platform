@@ -107,6 +107,10 @@ test("mobile passport recovers a failed query, switches personas, and supports k
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await expect(
+    page.getByRole("region", { name: "Личная сводка" }),
+  ).toBeVisible();
   let fail = true;
   await page.route("**/api/v1/profiles/me/progress", async (route) => {
     if (fail) {
@@ -114,7 +118,6 @@ test("mobile passport recovers a failed query, switches personas, and supports k
       await route.abort("failed");
     } else await route.continue();
   });
-  await page.goto("/");
   await page
     .getByRole("navigation", { name: "Учебная смена" })
     .getByRole("button", { name: "Мой прогресс", exact: true })

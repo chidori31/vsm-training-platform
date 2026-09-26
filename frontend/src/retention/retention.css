@@ -73,7 +73,7 @@
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  background: #e5ece5;
+  background: #f0f1f3;
   padding: 5px 9px;
 }
 .challenge-expired .challenge-status {
@@ -130,7 +130,7 @@
 }
 .notification-list .notification-unread {
   border-left-color: var(--ink);
-  background: #edf0e8;
+  background: #f4f5f6;
   padding-right: 12px;
 }
 .notification-list h3 {

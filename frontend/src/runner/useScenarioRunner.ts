@@ -601,6 +601,45 @@ class RunnerController {
     return this.api(path, {}, signal);
   };
 
+  openSession = async (sessionId: string) => {
+    if (this.running || this.saved.start || this.saved.decision || this.closed)
+      return;
+    await this.run(async (signal) => {
+      const state = parseSessionState(
+        await this.api(
+          `/sessions/${encodeURIComponent(sessionId)}`,
+          {},
+          signal,
+        ),
+      );
+      if (state.session.id !== sessionId)
+        throw new Error("Сервер вернул другую попытку.");
+      this.persist({ sessionId, start: null, decision: null });
+      this.update({ result: null });
+      this.adopt(state);
+      await this.result(signal);
+    });
+  };
+
+  writeResource = (
+    path: string,
+    body: unknown,
+    key: string,
+    signal: AbortSignal,
+  ): Promise<unknown> => {
+    if (this.closed)
+      return Promise.reject(new DOMException("Aborted", "AbortError"));
+    return this.api(
+      path,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": key },
+        body: JSON.stringify(body),
+      },
+      signal,
+    );
+  };
+
   writeNotificationRead = (
     id: string,
     read: boolean,
@@ -686,8 +725,17 @@ export function useScenarioRunner() {
       Promise.reject(new Error("Подключение ещё не готово.")),
     [],
   );
+  const writeResource = useCallback(
+    (path: string, body: unknown, key: string, signal: AbortSignal) =>
+      controller.current?.writeResource(path, body, key, signal) ??
+      Promise.reject(new Error("Подключение ещё не готово.")),
+    [],
+  );
   return {
     ...view,
+    writeResource,
+    openSession: (id: string) =>
+      controller.current?.openSession(id) ?? Promise.resolve(),
     writeNotificationRead,
     readResource,
     switchPersona: (personaId: string) =>

@@ -13,6 +13,8 @@ import type {
 import { useScenarioRunner } from "./runner/useScenarioRunner";
 import { CareerPanel, CompletionReward } from "./career/CareerPanel";
 import { Debrief } from "./learning/Debrief";
+import { TodayBriefing } from "./shift/TodayBriefing";
+import { ShiftPanel, PersonalBriefing } from "./shift/ShiftPanel";
 import { RetentionPanel } from "./retention/RetentionPanel";
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
@@ -35,14 +37,14 @@ function Scoreboard({ session }: { session: SessionSnapshot }) {
         [
           {
             metric: "passenger_loyalty",
-            name: "Доверие пассажиров",
-            english: "PASSENGER LOYALTY",
+            name: "Клиентский сервис",
+            english: "СЕРВИС",
             key: "loyalty",
           },
           {
             metric: "safety_rating",
             name: "Безопасность",
-            english: "SAFETY RATING",
+            english: "БЕЗОПАСНОСТЬ",
             key: "safety",
           },
         ] as const
@@ -211,17 +213,18 @@ export default function App() {
       </a>
       <header className="system-header">
         <div className="wordmark" aria-label="ВСМ — учебная смена">
-          <svg viewBox="0 0 46 32" aria-hidden="true">
-            <path
-              d="M0 2h21l-9 10H0zm0 16h11L0 30zm29-16h17L19 30H2z"
-              fill="currentColor"
-            />
-          </svg>
-          <span>
-            ВСМ<span className="wordmark-divider">/</span>СМЕНА
+          <img
+            className="transport-logo"
+            src="/brand/moscow-transport.png"
+            alt="Московский транспорт"
+            width="845"
+            height="836"
+          />
+          <span className="product-name">
+            Учебная смена<small>Центр подготовки проводников · ВСМ</small>
           </span>
         </div>
-        <span className="header-caption">ТРЕНАЖЁР ПРОВОДНИКА</span>
+        <span className="header-caption">СЛУЖЕБНЫЙ УЧЕБНЫЙ СЕРВИС</span>
         <span className="operation-status">
           <span
             className={`status-light ${runner.connection === "offline" ? "disconnected" : ""}`}
@@ -313,6 +316,37 @@ export default function App() {
           </>
         ) : (
           <>
+            {runner.identity && runner.phase !== "loading" && (
+              <ShiftPanel
+                key={runner.identity.id}
+                read={runner.readResource}
+                write={runner.writeResource}
+                identityId={runner.identity.id}
+                sessionId={session?.id}
+                sessionCompleted={Boolean(completed)}
+                revision={session?.decisions.length ?? 0}
+                onShiftComplete={runner.leave}
+                openSession={runner.openSession}
+                busy={runner.busy}
+              />
+            )}
+            {!session && runner.identity && runner.phase !== "loading" && (
+              <PersonalBriefing
+                key={`brief-${runner.identity.id}`}
+                read={runner.readResource}
+                identityId={runner.identity.id}
+                onProfile={() => setScreen("profile")}
+              />
+            )}
+            {!session && runner.identity && runner.phase !== "loading" && (
+              <TodayBriefing
+                key={`today-${runner.identity.id}`}
+                read={runner.readResource}
+                identityId={runner.identity.id}
+                catalog={catalog}
+                onResult={runner.openSession}
+              />
+            )}
             <div className="journey-header">
               <ol aria-label="Этапы прохождения">
                 {["Подготовка", "Ситуация", "Разбор"].map((label, index) => (
@@ -328,7 +362,7 @@ export default function App() {
                   </li>
                 ))}
               </ol>
-              <span className="training-badge">SIMULATION / ВСМ</span>
+              <span className="training-badge">ПРАКТИКА / ВСМ</span>
             </div>
 
             {connectionProblem && (
@@ -377,7 +411,7 @@ export default function App() {
               <>
                 <div className="section-heading">
                   <div>
-                    <p className="eyebrow">ВАША УЧЕБНАЯ СМЕНА</p>
+                    <p className="eyebrow">САМОСТОЯТЕЛЬНАЯ ПОДГОТОВКА</p>
                     <h1 ref={heading} tabIndex={-1}>
                       Выберите рабочую ситуацию
                     </h1>
@@ -602,6 +636,27 @@ export default function App() {
                       </span>
                     </div>
                     <Scoreboard session={session} />
+                    <dl className="professional-readings">
+                      {[
+                        ["Регламент", "regulation"],
+                        ["Коммуникация", "communication"],
+                      ].map(([label, id]) => (
+                        <div key={id}>
+                          <dt>{label}</dt>
+                          <dd>
+                            {session.scores.find(
+                              (s) =>
+                                s.metric === "competency" &&
+                                s.competency_id === id,
+                            )?.value ?? "—"}
+                          </dd>
+                        </div>
+                      ))}
+                      <div>
+                        <dt>Решений подтверждено</dt>
+                        <dd>{session.decisions.length}</dd>
+                      </div>
+                    </dl>
                   </aside>
                 </div>
                 <RouteLine session={session} />
@@ -674,7 +729,7 @@ export default function App() {
                     <span className="eyebrow">ИТОГ СИТУАЦИИ</span>
                     <p>{state.current_node.text}</p>
                     <span className="quiet-note">
-                      Доверие и безопасность оцениваются независимо. Разберите,
+                      Сервис и безопасность оцениваются независимо. Разберите,
                       как каждое решение повлияло на результат.
                     </span>
                   </div>

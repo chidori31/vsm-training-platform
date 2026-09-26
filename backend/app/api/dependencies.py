@@ -2,7 +2,7 @@ import os
 from collections.abc import Iterator
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Query
+from fastapi import Depends, HTTPException, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import Engine, create_engine
 
@@ -36,10 +36,15 @@ def require_token(
 
 
 def current_user(
+    request: Request,
     token: Annotated[str, Depends(require_token)],
     engine: Database,
 ) -> EmployeeProfile:
-    return IdentityService(engine).authenticate(token)
+    from app.api.anti_cheat import protect_authenticated_command
+
+    user = IdentityService(engine).authenticate(token)
+    protect_authenticated_command(request, engine, user.id)
+    return user
 
 
 User = Annotated[EmployeeProfile, Depends(current_user)]

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Header, Response
+from fastapi import APIRouter, Depends, Header, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import (
     AfterValidator,
@@ -119,11 +119,17 @@ def response_for(view: SessionView) -> SessionResponse:
 )
 def start_session(
     request: StartRequest,
+    http_request: Request,
     response: Response,
     user: User,
     service: Service,
     idempotency_key: Annotated[RequestId, Header(alias="Idempotency-Key")],
 ) -> SessionResponse:
+    http_request.state.command_audit_metadata = {
+        "client_event_id": idempotency_key,
+        "requested_scenario_id": request.scenario_id,
+        "requested_scenario_version": request.scenario_version,
+    }
     view, replayed = service.start_idempotent(
         **request.model_dump(), employee_id=user.id, key=idempotency_key
     )
@@ -143,9 +149,16 @@ def get_session(session_id: str, user: User, service: Service) -> SessionRespons
 def make_decision(
     session_id: str,
     request: DecisionRequest,
+    http_request: Request,
     user: User,
     service: Service,
 ) -> DecisionResponse | JSONResponse:
+    http_request.state.command_audit_metadata = {
+        "client_event_id": request.decision_id,
+        "requested_node_id": request.node_id,
+        "requested_choice_id": request.choice_id,
+        "expected_revision": request.expected_sequence,
+    }
     result = service.decide(session_id, **request.model_dump(), employee_id=user.id)
     state = response_for(result.view)
     if result.outcome in {"timed_out", "rejected"}:

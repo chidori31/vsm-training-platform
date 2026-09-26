@@ -6,7 +6,10 @@ export function scenarioTitle(id: string, version: number, title: string) {
     "demo-medical-incident": "Медицинская ситуация",
     "demo-service-situation": "Сервисная ситуация",
   };
-  return (version === 1 && titles[id]) || title;
+  return (
+    (version === 1 && titles[id]) ||
+    title.replace(/^Синтетическое демо:\s*/, "")
+  );
 }
 
 interface SceneCopy {

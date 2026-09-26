@@ -77,6 +77,13 @@ export function debriefFixture() {
           choice_ids: ["offer"],
         },
         pattern_codes: [] as string[],
+        assessment: {
+          status: "strong",
+          title: "Сильное решение",
+          explanation:
+            "Есть положительный эффект без снижения других показателей.",
+          is_critical: false,
+        },
       },
     ],
   };
@@ -161,6 +168,23 @@ export function analyticsFixture() {
         advice: "Сначала оцените срочность запроса.",
       },
     ],
+    performance: {
+      measured_decision_count: 6,
+      average_decision_seconds: 12.5,
+      best_loyalty: 78,
+      best_safety: 82,
+      weeks: [
+        {
+          week_start: "2026-09-21T00:00:00Z",
+          completed_sessions: 3,
+          decision_count: 8,
+          timeout_count: 2,
+          average_decision_seconds: 12.5,
+          average_loyalty: 60,
+          average_safety: 48,
+        },
+      ],
+    },
     scenarios: [
       {
         scenario_id: "demo-service-situation",

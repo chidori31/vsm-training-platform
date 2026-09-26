@@ -52,6 +52,13 @@ class SuggestionResponse(LearningFact):
     choice_ids: list[str]
 
 
+class DecisionAssessmentResponse(LearningFact):
+    status: Literal["critical_error", "attention", "strong", "neutral"]
+    title: str
+    explanation: str
+    is_critical: bool
+
+
 class DecisionDebriefResponse(LearningFact):
     sequence: int
     decision_id: str
@@ -71,6 +78,7 @@ class DecisionDebriefResponse(LearningFact):
     alternatives: list[AlternativeResponse]
     suggestion: SuggestionResponse
     pattern_codes: list[str]
+    assessment: DecisionAssessmentResponse
 
 
 class DebriefSummaryResponse(LearningFact):
@@ -134,6 +142,24 @@ class ScenarioStatisticsResponse(LearningFact):
     average_safety: float | None
 
 
+class WeekStatisticsResponse(LearningFact):
+    week_start: datetime
+    completed_sessions: int
+    decision_count: int
+    timeout_count: int
+    average_decision_seconds: float | None
+    average_loyalty: float
+    average_safety: float
+
+
+class PerformanceStatisticsResponse(LearningFact):
+    measured_decision_count: int
+    average_decision_seconds: float | None
+    best_loyalty: int | None
+    best_safety: int | None
+    weeks: list[WeekStatisticsResponse]
+
+
 class LearningAnalyticsResponse(LearningFact):
     rule_version: Literal[1]
     total_sessions: int
@@ -146,6 +172,7 @@ class LearningAnalyticsResponse(LearningFact):
     weaknesses: list[str]
     patterns: list[PatternResponse]
     scenarios: list[ScenarioStatisticsResponse]
+    performance: PerformanceStatisticsResponse
 
 
 @router.get("/sessions/{session_id}/debrief", response_model=DebriefResponse)

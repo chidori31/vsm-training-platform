@@ -1,16 +1,16 @@
 :root {
   font-family: "Bahnschrift", "Segoe UI", Arial, sans-serif;
-  color: #132f39;
-  background: #f5f4ec;
+  color: #202328;
+  background: #f4f5f6;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   font-weight: 400;
-  --ink: #132f39;
-  --muted: #5a6d71;
-  --line: #d3d9d4;
-  --yellow: #eee15b;
-  --teal: #24776c;
+  --ink: #202328;
+  --muted: #62666e;
+  --line: #dadddf;
+  --yellow: #f0f1f3;
+  --teal: #bd2028;
 }
 
 * {
@@ -87,7 +87,7 @@ button {
   height: 88px;
   padding: 0 40px;
   background: var(--ink);
-  color: #fafaf3;
+  color: #ffffff;
   display: flex;
   align-items: center;
   gap: 32px;
@@ -133,7 +133,7 @@ button {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #b9d8b7;
+  background: #64c19d;
   flex-shrink: 0;
 }
 .status-light.disconnected {
@@ -229,14 +229,14 @@ h1 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   border: 1px solid var(--line);
-  background: #fafaf5;
+  background: #ffffff;
 }
 .briefing-preview {
   position: relative;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: #e5ece5;
+  background: #f0f1f3;
   border-right: 1px solid var(--line);
 }
 .briefing-copy {
@@ -252,7 +252,7 @@ h1 {
   max-width: 460px;
   font-size: 16px;
   line-height: 1.55;
-  color: #435f62;
+  color: #565c65;
 }
 .briefing-art {
   position: relative;
@@ -275,7 +275,7 @@ h1 {
     9px "Consolas",
     monospace;
   letter-spacing: 0.07em;
-  background: #132f39;
+  background: #202328;
   color: #fff;
   padding: 6px 8px;
 }
@@ -309,10 +309,10 @@ h1 {
   transition: background-color 0.15s;
 }
 .scenario-row:hover {
-  background: #eef0e7;
+  background: #f4f5f6;
 }
 .scenario-row.selected {
-  background: #edf0df;
+  background: #fff0f0;
   box-shadow: inset 3px 0 var(--ink);
 }
 .departure-index {
@@ -352,7 +352,7 @@ h1 {
 .departure-action > p {
   font-size: 12px;
   margin-bottom: 14px;
-  color: #485f61;
+  color: #565c65;
 }
 .departure-action > p > span {
   font-size: 17px;
@@ -375,7 +375,7 @@ h1 {
   width: 100%;
 }
 .primary-button:hover:enabled {
-  background: #254b52;
+  background: #a91e24;
 }
 .primary-button:disabled {
   opacity: 0.55;
@@ -419,7 +419,7 @@ h1 {
   gap: 9px;
   align-items: center;
   font-size: 11px;
-  color: #456467;
+  color: #565c65;
   line-height: 1.4;
 }
 .character-label > span {
@@ -436,22 +436,22 @@ blockquote,
 }
 blockquote::before {
   content: "«";
-  color: #829e97;
+  color: #979da6;
 }
 blockquote::after {
   content: "»";
-  color: #829e97;
+  color: #979da6;
 }
 .scene-context {
   font-size: 13px;
   line-height: 1.55;
-  color: #5d7172;
+  color: #62666e;
   max-width: 380px;
 }
 .source-context {
   margin-top: auto;
   padding-top: 24px;
-  color: #4e6869;
+  color: #62666e;
   font-size: 11px;
   line-height: 1.55;
 }
@@ -467,7 +467,7 @@ blockquote::after {
 .scene-art {
   position: relative;
   overflow: hidden;
-  background: #d9e8e7;
+  background: #e9eaec;
   min-height: 378px;
 }
 .scene-art .passenger-art {
@@ -488,13 +488,13 @@ blockquote::after {
   border-left: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  background: #edf0e8;
+  background: #f4f5f6;
 }
 .timer {
   background: var(--yellow);
   min-height: 144px;
   padding: 24px;
-  border-bottom: 1px solid #d5c94c;
+  border-bottom: 1px solid #dadddf;
 }
 .timer > strong {
   display: block;
@@ -560,23 +560,23 @@ blockquote::after {
 .score-name {
   display: block;
   font-size: 11px;
-  color: #4f686d;
+  color: #62666e;
   margin-top: 7px;
 }
 .score-track {
   height: 4px;
-  background: #d4dfd8;
+  background: #dadde1;
   margin-top: 13px;
   overflow: hidden;
 }
 .score-track > span {
   display: block;
   height: 100%;
-  background: #24776c;
+  background: #bd2028;
   transition: width 0.35s ease-out;
 }
 .score-safety .score-track > span {
-  background: #476388;
+  background: #23665a;
 }
 .route-strip {
   display: flex;
@@ -609,7 +609,7 @@ blockquote::after {
 .route-line li:not(:last-child)::after {
   content: "";
   height: 1px;
-  background: #829d94;
+  background: #b9bdc4;
   width: 40px;
   margin: 0 14px 0 6px;
 }
@@ -671,7 +671,7 @@ blockquote::after {
   min-height: 76px;
   border: 0;
   border-bottom: 1px solid var(--line);
-  background: #fafaf5;
+  background: #ffffff;
   color: var(--ink);
   transition: background-color 0.15s;
 }
@@ -1035,7 +1035,7 @@ blockquote::after {
   .timer {
     flex: 1;
     border-bottom: 0;
-    border-right: 1px solid #d5c94c;
+    border-right: 1px solid #dadddf;
     padding: 20px;
     min-height: 140px;
   }
@@ -1208,7 +1208,7 @@ blockquote::after {
     align-items: center;
     gap: 3px 14px;
     border-right: 0;
-    border-bottom: 1px solid #d5c94c;
+    border-bottom: 1px solid #dadddf;
   }
   .timer > strong {
     grid-column: 2;

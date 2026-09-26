@@ -122,10 +122,12 @@ def test_debrief_exact_contract_persists_across_replay_and_new_engine(
         "alternatives",
         "suggestion",
         "pattern_codes",
+        "assessment",
     }
     assert (first["loyalty"]["requested_delta"], first["loyalty"]["delta"]) == (60, 50)
     assert second["safety"]["delta"] == 0
     assert first["competencies"][0]["delta"] == 3
+    assert first["assessment"]["status"] == "strong"
     assert first["alternatives"][0]["choice_id"] == "decline"
     assert decide(client, sid, "followup", "finish", 1).json()["outcome"] == "duplicate"
     assert client.get(f"/api/v1/sessions/{sid}/debrief").json() == body
@@ -142,6 +144,15 @@ def test_debrief_exact_contract_persists_across_replay_and_new_engine(
         assert client.get(f"/api/v1/sessions/{sid}/debrief").json() == body
         analytics = client.get("/api/v1/analytics/me/competencies").json()
         assert analytics["decision_count"] == 2
+        performance = analytics["performance"]
+        assert performance["measured_decision_count"] == 2
+        assert performance["average_decision_seconds"] == 0
+        assert performance["best_loyalty"] == 97
+        assert performance["best_safety"] == 55
+        assert len(performance["weeks"]) == 1
+        assert performance["weeks"][0]["completed_sessions"] == 1
+        assert performance["weeks"][0]["average_loyalty"] == 97
+        assert performance["weeks"][0]["average_safety"] == 55
         row = analytics["competencies"][0]
         assert (row["earned_points"], row["net_delta"], row["opportunities"]) == (
             3,
@@ -168,6 +179,8 @@ def test_debrief_get_expires_due_node_once_and_explains_predeadline_choices(
     assert body["summary"]["timeout_count"] == 1
     final = body["decisions"][-1]
     assert final["was_timeout"] and final["elapsed_seconds"] == 11
+    assert final["assessment"]["status"] == "critical_error"
+    assert final["assessment"]["is_critical"]
     assert final["pattern_codes"] == ["timeout", "safety_loss"]
     assert final["alternatives"][0]["choice_id"] == "finish"
     assert final["alternatives"][0]["available"]
@@ -175,6 +188,9 @@ def test_debrief_get_expires_due_node_once_and_explains_predeadline_choices(
     assert client.get(f"/api/v1/sessions/{sid}/debrief").json() == body
     analytics = client.get("/api/v1/analytics/me/competencies").json()
     assert analytics["timeout_count"] == 1 and analytics["decision_count"] == 2
+    assert analytics["performance"]["measured_decision_count"] == 1
+    assert analytics["performance"]["average_decision_seconds"] == 0
+    assert analytics["performance"]["weeks"][0]["timeout_count"] == 1
 
 
 def test_analytics_keeps_owner_history_without_pagination_and_old_route_compatible(
@@ -194,6 +210,13 @@ def test_analytics_keeps_owner_history_without_pagination_and_old_route_compatib
         "weaknesses": [],
         "patterns": [],
         "scenarios": [],
+        "performance": {
+            "measured_decision_count": 0,
+            "average_decision_seconds": None,
+            "best_loyalty": None,
+            "best_safety": None,
+            "weeks": [],
+        },
     }
     for index in range(3):
         complete(client, scenario, f"attempt-{index}")
@@ -206,6 +229,8 @@ def test_analytics_keeps_owner_history_without_pagination_and_old_route_compatib
         body["active_sessions"],
     ) == (4, 3, 1)
     assert body["decision_count"] == 6
+    assert body["performance"]["measured_decision_count"] == 6
+    assert body["performance"]["weeks"][0]["completed_sessions"] == 3
     row = body["competencies"][0]
     assert (row["earned_points"], row["opportunities"], row["practiced_sessions"]) == (
         9,

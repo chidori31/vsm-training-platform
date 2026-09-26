@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
 from .common import DomainError
 from .engine import restore_session
@@ -56,6 +57,14 @@ class Suggestion:
 
 
 @dataclass(frozen=True)
+class DecisionAssessment:
+    status: Literal["critical_error", "attention", "strong", "neutral"]
+    title: str
+    explanation: str
+    is_critical: bool
+
+
+@dataclass(frozen=True)
 class DecisionDebrief:
     sequence: int
     decision_id: str
@@ -75,6 +84,7 @@ class DecisionDebrief:
     alternatives: tuple[Alternative, ...]
     suggestion: Suggestion
     pattern_codes: tuple[str, ...]
+    assessment: DecisionAssessment
 
 
 @dataclass(frozen=True)
@@ -178,6 +188,49 @@ def _suggestion(
     return Suggestion(text + scope, tuple(better))
 
 
+def _assessment(
+    deltas: tuple[int, ...], *, critical: bool, timeout: bool, available: bool
+) -> DecisionAssessment:
+    if timeout and not available:
+        return DecisionAssessment(
+            "neutral",
+            "Нет доступного действия",
+            "Условия не позволяли сделать выбор."
+            " Этот таймаут не считается ошибкой проводника.",
+            critical,
+        )
+    if critical and (timeout or deltas[1] < 0):
+        return DecisionAssessment(
+            "critical_error",
+            "Критическое решение требует разбора",
+            "В сцене с ограничением времени пропущен выбор или снижена безопасность."
+            " Разберите риск и доступные действия.",
+            critical,
+        )
+    if timeout or any(delta < 0 for delta in deltas):
+        return DecisionAssessment(
+            "attention",
+            "Есть зона для улучшения",
+            "Решение содержит отрицательный эффект или пропущено по времени."
+            " Сопоставьте последствия и альтернативы.",
+            critical,
+        )
+    if any(delta > 0 for delta in deltas):
+        return DecisionAssessment(
+            "strong",
+            "Сильное решение",
+            "Есть положительный эффект без снижения других показателей в этом решении."
+            " Это оценка непосредственного последствия.",
+            critical,
+        )
+    return DecisionAssessment(
+        "neutral",
+        "Без изменения показателей",
+        "Непосредственные показатели не изменились. Оцените контекст и следующий шаг.",
+        critical,
+    )
+
+
 def debrief_for(scenario: Scenario, session: ScenarioSession) -> SessionDebrief:
     """Replay first, then reconstruct each visit's state before evaluating choices."""
     restore_session(scenario, session)
@@ -197,10 +250,8 @@ def debrief_for(scenario: Scenario, session: ScenarioSession) -> SessionDebrief:
         after, _ = apply_scored_effects(
             before, selected.effects, policy=session.scoring_policy
         )
-        loyalty = _scale(
-            LOYALTY, "Loyalty — доверие пассажира", before, after, selected
-        )
-        safety = _scale(SAFETY, "Safety — безопасность", before, after, selected)
+        loyalty = _scale(LOYALTY, "Клиентский сервис", before, after, selected)
+        safety = _scale(SAFETY, "Безопасность", before, after, selected)
         competencies = []
         for key in skills:
             metric = MetricRef(Metric.COMPETENCY, key)
@@ -282,6 +333,12 @@ def debrief_for(scenario: Scenario, session: ScenarioSession) -> SessionDebrief:
                     timeout,
                 ),
                 tuple(patterns),
+                _assessment(
+                    (loyalty.delta, safety.delta, *(c.delta for c in competencies)),
+                    critical=node.time_limit_seconds is not None,
+                    timeout=timeout,
+                    available=any(a.available for a in alternatives),
+                ),
             )
         )
         before, entered_at = after, recorded.decided_at

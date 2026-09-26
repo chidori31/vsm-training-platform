@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from sqlalchemy.exc import OperationalError
 
+from app.api.catalog import protect_demo_login
 from app.api.dependencies import get_engine
 from app.api.sessions import DecisionRequest
 from app.main import app
@@ -87,6 +88,7 @@ def test_decision_commands_reject_control_characters_and_unbounded_revision(
 def test_validation_errors_do_not_echo_submitted_values(monkeypatch):
     monkeypatch.setenv("DEMO_AUTH_ENABLED", "true")
     app.dependency_overrides[get_engine] = lambda: None
+    app.dependency_overrides[protect_demo_login] = lambda: None
     try:
         with TestClient(app) as client:
             response = client.post(

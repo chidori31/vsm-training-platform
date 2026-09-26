@@ -190,6 +190,7 @@ export function competencyName(id: string) {
     (
       {
         communication: "Коммуникация",
+        regulation: "Соблюдение регламента",
         coordination: "Координация",
         service: "Сервис",
       } as Record<string, string>

@@ -1,8 +1,9 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Path, Query, Request
 from pydantic import BaseModel, ConfigDict
 
+from app.api.anti_cheat import audit_login, enforce_rate
 from app.api.dependencies import Database, Limit, Offset, User, require_demo_mode
 from app.api.schemas import (
     AchievementResponse,
@@ -33,16 +34,22 @@ class DemoLoginRequest(BaseModel):
     ] = "demo-employee"
 
 
+def protect_demo_login(request: Request, engine: Database) -> None:
+    request.state.command_audit_context = (engine, None, "auth")
+    enforce_rate(engine, "auth", "global")
+
+
 @router.post(
     "/auth/demo",
     response_model=LoginResponse,
     tags=["auth"],
-    dependencies=[Depends(require_demo_mode)],
+    dependencies=[Depends(require_demo_mode), Depends(protect_demo_login)],
 )
 def demo_login(engine: Database, body: DemoLoginRequest | None = None) -> LoginResponse:
     result = IdentityService(engine).demo_login(
         body.persona_id if body else "demo-employee"
     )
+    audit_login(engine, result.profile.id)
     return LoginResponse(
         access_token=result.access_token,
         expires_at=result.expires_at,

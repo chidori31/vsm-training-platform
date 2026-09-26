@@ -9,6 +9,7 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.application.anti_cheat import record_session_command
 from app.application.errors import UseCaseError
 from app.application.gamification import settle_profile
 from app.domain.common import DomainError, require_integer, require_text, utc_time
@@ -96,6 +97,9 @@ class SessionService:
         scenario_id: str,
         scenario_version: int,
         employee_id: str,
+        *,
+        client_event_id: str | None = None,
+        action: str = "start",
     ) -> SessionView:
         document = ScenarioRepository(database).get(scenario_id, scenario_version)
         if document is None:
@@ -119,6 +123,17 @@ class SessionService:
         SessionRepository(database).add(scenario, session)
         if session.status is SessionStatus.COMPLETED:
             settle_profile(database, session.employee_id)
+        record_session_command(
+            database,
+            actor_id=employee_id,
+            action=action,
+            client_event_id=client_event_id or session.id,
+            before=None,
+            after=session,
+            outcome="accepted",
+            server_time=now,
+            expected_revision=0,
+        )
         return self._view(scenario, session, now)
 
     def start_idempotent(
@@ -156,7 +171,13 @@ class SessionService:
                 )
             replayed = record.session_id is not None
             if record.session_id is None:
-                view = self._start(database, scenario_id, scenario_version, employee_id)
+                view = self._start(
+                    database,
+                    scenario_id,
+                    scenario_version,
+                    employee_id,
+                    client_event_id=key,
+                )
                 record.session_id = view.session.id
             else:
                 repository = SessionRepository(database)
@@ -167,7 +188,18 @@ class SessionService:
                 if session.employee_id != employee_id:
                     raise DomainError("Session start key owner mismatch")
                 now = utc_time(self.clock(database), "server time")
+                before = session
                 session, _ = self._expire_due(repository, row, scenario, session, now)
+                record_session_command(
+                    database,
+                    actor_id=employee_id,
+                    action="start",
+                    client_event_id=key,
+                    before=before,
+                    after=session,
+                    outcome="duplicate",
+                    server_time=now,
+                )
                 view = self._view(scenario, session, now)
         return view, replayed
 
@@ -187,6 +219,7 @@ class SessionService:
     ) -> tuple[ScenarioSession, bool]:
         if row.deadline is None or now < row.deadline:
             return session, False
+        before = session
         session = expire(
             scenario,
             session,
@@ -198,6 +231,18 @@ class SessionService:
         repository.save(row, scenario, session)
         if session.status is SessionStatus.COMPLETED:
             settle_profile(repository.database, session.employee_id)
+        record_session_command(
+            repository.database,
+            actor_id="system:timer",
+            action="timeout",
+            client_event_id=session.decisions[-1].id,
+            before=before,
+            after=session,
+            outcome="accepted",
+            server_time=now,
+            expected_revision=len(before.decisions),
+            node_id=before.current_node_id,
+        )
         return session, True
 
     def get(self, session_id: str, *, employee_id: str | None = None) -> SessionView:
@@ -241,6 +286,7 @@ class SessionService:
             if employee_id is not None and session.employee_id != employee_id:
                 raise SessionNotFound("Session not found")
             now = utc_time(self.clock(database), "server time")
+            before = session
             session, timed_out = self._expire_due(
                 repository, row, scenario, session, now
             )
@@ -277,6 +323,19 @@ class SessionService:
                         decision_id,
                     )
             # Conflict is a committed result: do not roll back an automatic timeout.
+            record_session_command(
+                database,
+                actor_id=session.employee_id,
+                action="decision",
+                client_event_id=decision_id,
+                before=before,
+                after=result.view.session,
+                outcome=result.outcome,
+                server_time=now,
+                expected_revision=expected_sequence,
+                node_id=node_id,
+                choice_id=choice_id,
+            )
         return result
 
     def expire_due(self, *, limit: int = 100) -> int:

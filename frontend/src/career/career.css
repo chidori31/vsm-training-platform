@@ -30,7 +30,7 @@
   display: grid;
   grid-template-columns: 1.35fr 1fr;
   border: 1px solid var(--line);
-  background: #e5ece5;
+  background: #f0f1f3;
 }
 .pass-identity {
   padding: 35px 40px;
@@ -386,7 +386,7 @@
   overflow-wrap: anywhere;
 }
 .ranking-table tbody tr {
-  background: #fafaf5;
+  background: #ffffff;
 }
 .ranking-table .your-rank {
   background: #e9eddb;

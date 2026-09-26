@@ -22,6 +22,164 @@ const statusLabels: Record<CompetencyStatus, string> = {
   developing: "Формируется",
 };
 
+function CompetencySparkline({
+  competency,
+}: {
+  competency: CompetencyAnalysis;
+}) {
+  if (!competency.trend.length) return null;
+  const maximum = Math.max(
+    1,
+    ...competency.trend.map((point) => point.cumulative_points),
+  );
+  const points = competency.trend.map((point, index) => ({
+    x:
+      competency.trend.length === 1
+        ? 160
+        : 10 + (index / (competency.trend.length - 1)) * 300,
+    y: 68 - (point.cumulative_points / maximum) * 54,
+    value: point.cumulative_points,
+    key: point.session_id,
+  }));
+  return (
+    <figure className="skill-sparkline">
+      <svg
+        viewBox="0 0 320 82"
+        role="img"
+        aria-label={`Динамика накопленных очков: ${competencyName(competency.competency_id)}. ${points.map((point) => point.value).join(" → ")}`}
+      >
+        <line className="sparkline-baseline" x1="10" x2="310" y1="68" y2="68" />
+        <polyline
+          className="sparkline-route"
+          points={points.map((point) => `${point.x},${point.y}`).join(" ")}
+        />
+        {points.map((point) => (
+          <circle
+            className="sparkline-stop"
+            key={point.key}
+            cx={point.x}
+            cy={point.y}
+            r="3.5"
+          />
+        ))}
+      </svg>
+      <figcaption>
+        Накопленные очки по завершённым попыткам · точные значения ниже
+      </figcaption>
+    </figure>
+  );
+}
+
+function ProfessionalPerformance({
+  performance,
+}: {
+  performance: NonNullable<AnalyticsData["performance"]>;
+}) {
+  const value = (number: number | null) =>
+    number === null ? "Нет данных" : displayNumber(number);
+  const weekDate = (date: string) =>
+    new Intl.DateTimeFormat("ru-RU", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(date));
+  return (
+    <section
+      className="professional-performance"
+      data-testid="professional-performance"
+      aria-labelledby="professional-performance-title"
+    >
+      <div className="action-heading">
+        <h3 id="professional-performance-title">Профессиональные показатели</h3>
+        <span>По завершённым учебным попыткам</span>
+      </div>
+      <dl className="performance-strip">
+        <div>
+          <dt>Среднее время решения</dt>
+          <dd>
+            {value(performance.average_decision_seconds)}
+            {performance.average_decision_seconds !== null && (
+              <small> сек.</small>
+            )}
+          </dd>
+          <span>
+            {performance.measured_decision_count} решений с действием
+            пользователя
+          </span>
+        </div>
+        <div>
+          <dt>Лучшая безопасность</dt>
+          <dd>{value(performance.best_safety)}</dd>
+          <span>Максимальное итоговое значение</span>
+        </div>
+        <div>
+          <dt>Лучший клиентский сервис</dt>
+          <dd>{value(performance.best_loyalty)}</dd>
+          <span>Шкала доверия пассажиров</span>
+        </div>
+      </dl>
+      <p className="learning-note performance-method">
+        Время — интервал от входа в сцену до регистрации действия сервером,
+        включая доставку запроса. Таймауты исключены. Быстрое решение само по
+        себе не означает качественное; XP учитывается отдельно.
+      </p>
+      <div className="action-heading weekly-heading">
+        <h3>Прогресс по неделям</h3>
+        <span>Журнал практики</span>
+      </div>
+      <p className="learning-note">
+        Недели начинаются в понедельник, UTC; попытка относится к неделе
+        завершения. Показаны только недели с завершённой практикой.
+      </p>
+      {!performance.weeks.length ? (
+        <p className="learning-empty">
+          Завершите первую ситуацию — появится первая запись недельного журнала.
+        </p>
+      ) : (
+        <div
+          className="learning-table-wrap"
+          role="region"
+          tabIndex={0}
+          aria-label="Прогресс по неделям: прокручиваемая таблица"
+        >
+          <table className="learning-table weekly-table">
+            <caption className="visually-hidden">Прогресс по неделям</caption>
+            <thead>
+              <tr>
+                <th scope="col">Неделя с</th>
+                <th scope="col">Завершено</th>
+                <th scope="col">Решения</th>
+                <th scope="col">Таймауты</th>
+                <th scope="col">Среднее время решения, сек.</th>
+                <th scope="col">Средний сервис</th>
+                <th scope="col">Средняя безопасность</th>
+              </tr>
+            </thead>
+            <tbody>
+              {performance.weeks.map((week) => (
+                <tr key={week.week_start}>
+                  <th scope="row">
+                    <time dateTime={week.week_start}>
+                      {weekDate(week.week_start)}
+                    </time>
+                  </th>
+                  <td>{week.completed_sessions}</td>
+                  <td>{week.decision_count}</td>
+                  <td>{week.timeout_count}</td>
+                  <td>{value(week.average_decision_seconds)}</td>
+                  <td>{displayNumber(week.average_loyalty)}</td>
+                  <td>{displayNumber(week.average_safety)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function CompetencyRow({ competency }: { competency: CompetencyAnalysis }) {
   return (
     <li
@@ -69,6 +227,7 @@ function CompetencyRow({ competency }: { competency: CompetencyAnalysis }) {
           </strong>
         </span>
       </div>
+      <CompetencySparkline competency={competency} />
       <details className="skill-trend">
         <summary>Динамика по попыткам</summary>
         {competency.trend.length === 0 ? (
@@ -197,7 +356,7 @@ function ScenarioStatistics({
                   <th scope="col">В работе</th>
                   <th scope="col">Таймауты</th>
                   <th scope="col">Среднее время, сек.</th>
-                  <th scope="col">Среднее доверие</th>
+                  <th scope="col">Средний клиентский сервис</th>
                   <th scope="col">Средняя безопасность</th>
                 </tr>
               </thead>
@@ -300,6 +459,9 @@ export function CompetencyAnalytics({
             наблюдения в 2 попытках. Это учебная эвристика, а не оценка
             профессиональной пригодности.
           </p>
+          {data.performance && (
+            <ProfessionalPerformance performance={data.performance} />
+          )}
           {data.completed_sessions === 0 && (
             <p className="learning-empty">
               Пока нет завершённых попыток. Пройдите ситуацию, чтобы увидеть

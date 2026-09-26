@@ -392,3 +392,24 @@ Content-Length. Превышение → 413 `request_too_large` в общем J
 не является серверным доказательством. Для будущего подключения требуется
 подтвердить scope, источник/идентичность и реализовать атомарное хранение.
 [Сопоставление QA](MEETUP_ALIGNMENT.md), [архитектурная граница](ARCHITECTURE.md#общий-фундамент-событий-после-qa).
+
+## Учебные смены
+
+- `POST /api/v1/shifts`, `Idempotency-Key`, JSON `{"difficulty":"standard"}`
+  (либо `advanced`): 201 новая / 200 повтор. Seed создаёт сервер.
+- `GET /api/v1/shifts/current`: `{shift: ...}` — текущая или последняя завершённая,
+  `null`, если истории нет. Чужой профиль не выбирается query-параметром.
+- `GET /api/v1/shifts/{id}`: сохранённый маршрут, метрики, квалификации, рекомендации.
+- `POST /api/v1/shifts/{id}/advance`: `command_id`, `expected_step`, `session_id`.
+  Только завершённая закреплённая попытка позволяет открыть следующий этап.
+  Повтор команды не создаёт новую попытку/XP; конфликт даёт 409, чужая смена404.
+
+Текущий `current_session_id` обслуживается прежними endpoints sessions/decisions.
+После последнего advance `status=completed`, текущая попытка null; история этапов
+остаётся доступной для debrief. Описание всех полей — `/docs` и OpenAPI.
+
+Новые additive поля: `debrief.decisions[].assessment` и
+`analytics/me/competencies.performance`. Недельная группировка по завершению в UTC;
+время реакции учитывает только принятые выборы пользователя, не timeout.
+Чувствительные команды ограничены общими PostgreSQL buckets: 429 содержит
+`Retry-After`. Параметры и модель угроз — [ANTI_CHEAT](ANTI_CHEAT.md).

@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from .common import DomainError
@@ -63,6 +63,26 @@ class ScenarioStatistics:
 
 
 @dataclass(frozen=True)
+class WeekStatistics:
+    week_start: datetime
+    completed_sessions: int
+    decision_count: int
+    timeout_count: int
+    average_decision_seconds: float | None
+    average_loyalty: float
+    average_safety: float
+
+
+@dataclass(frozen=True)
+class PerformanceStatistics:
+    measured_decision_count: int
+    average_decision_seconds: float | None
+    best_loyalty: int | None
+    best_safety: int | None
+    weeks: tuple[WeekStatistics, ...]
+
+
+@dataclass(frozen=True)
 class LearningAnalytics:
     rule_version: int
     total_sessions: int
@@ -75,6 +95,7 @@ class LearningAnalytics:
     weaknesses: tuple[str, ...]
     patterns: tuple[Pattern, ...]
     scenarios: tuple[ScenarioStatistics, ...]
+    performance: PerformanceStatistics
 
 
 _PATTERNS = (
@@ -87,13 +108,13 @@ _PATTERNS = (
     (
         "safety_loss",
         "Снижение безопасности",
-        "Действие снизило шкалу safety.",
+        "Действие снизило показатель безопасности.",
         "Перед выбором проверьте непосредственные риски для безопасности.",
     ),
     (
         "loyalty_loss",
-        "Снижение доверия",
-        "Действие снизило шкалу loyalty.",
+        "Снижение клиентского сервиса",
+        "Действие снизило клиентский сервис — доверие пассажиров.",
         "Объясните пассажиру причину действия и предложите доступную помощь.",
     ),
     (
@@ -187,6 +208,44 @@ def _record_skills(
             row.sessions.add(session.id)
 
 
+def _performance(
+    completed: list[tuple[Scenario, ScenarioSession]],
+    reports: dict[str, SessionDebrief],
+) -> PerformanceStatistics:
+    weeks: dict[datetime, list[ScenarioSession]] = {}
+    elapsed: list[float] = []
+    for _, session in completed:
+        report = reports[session.id]
+        day = report.completed_at.astimezone(UTC).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        week = day - timedelta(days=day.weekday())
+        weeks.setdefault(week, []).append(session)
+        elapsed.extend(d.elapsed_seconds for d in report.decisions if not d.was_timeout)
+    history = []
+    for week, sessions in sorted(weeks.items()):
+        decisions = [d for session in sessions for d in reports[session.id].decisions]
+        measured = [d.elapsed_seconds for d in decisions if not d.was_timeout]
+        history.append(
+            WeekStatistics(
+                week,
+                len(sessions),
+                len(decisions),
+                sum(d.was_timeout for d in decisions),
+                sum(measured) / len(measured) if measured else None,
+                sum(s.scores.value(LOYALTY) for s in sessions) / len(sessions),
+                sum(s.scores.value(SAFETY) for s in sessions) / len(sessions),
+            )
+        )
+    return PerformanceStatistics(
+        len(elapsed),
+        sum(elapsed) / len(elapsed) if elapsed else None,
+        max((s.scores.value(LOYALTY) for _, s in completed), default=None),
+        max((s.scores.value(SAFETY) for _, s in completed), default=None),
+        tuple(history),
+    )
+
+
 def competency_analytics(
     attempts: Iterable[tuple[Scenario, ScenarioSession]],
 ) -> LearningAnalytics:
@@ -277,4 +336,5 @@ def competency_analytics(
         tuple(c.competency_id for c in competencies if c.status == "growth_area"),
         patterns,
         tuple(statistics),
+        _performance(completed, reports),
     )
