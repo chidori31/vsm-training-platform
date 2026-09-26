@@ -381,3 +381,14 @@ Content-Length. Превышение → 413 `request_too_large` в общем J
 Клиентские поля score/loyalty/safety/xp/effects/destination/employee_id/now в
 командах игры отвергаются как лишние (422). У лидербордов нет write-endpoint.
 Подробная модель доверия и границы демо: [SECURITY.md](../SECURITY.md).
+
+## Граница новых событий после QA
+
+Публичный API остаётся учебным. В этом этапе не появились `/events`,
+`/rewards/claim`, ticketing, payment или passenger endpoints.
+`PendingClientEvent`, `ClientEventVerifier` и `AtomicEventStore` — Python-контракты
+изолированного прототипа, а не маршруты FastAPI. Demo-токен не подтверждает
+покупку/поездку или право на ценный бонус. Клиентское sync_status=CONFIRMED
+не является серверным доказательством. Для будущего подключения требуется
+подтвердить scope, источник/идентичность и реализовать атомарное хранение.
+[Сопоставление QA](MEETUP_ALIGNMENT.md), [архитектурная граница](ARCHITECTURE.md#общий-фундамент-событий-после-qa).
