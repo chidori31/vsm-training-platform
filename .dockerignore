@@ -10,3 +10,6 @@
 **/.mypy_cache
 **/.ruff_cache
 **/*.log
+**/test-results
+**/playwright-report
+**/coverage
