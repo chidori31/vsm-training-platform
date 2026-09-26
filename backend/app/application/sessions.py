@@ -6,13 +6,23 @@ from typing import Literal
 from uuid import uuid4
 
 from sqlalchemy import Engine, func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.application.errors import UseCaseError
 from app.domain.common import DomainError, require_integer, require_text, utc_time
-from app.domain.engine import advance, expire, node_deadline, start_session
+from app.domain.engine import (
+    advance,
+    available_choices,
+    current_node,
+    expire,
+    node_deadline,
+    start_session,
+)
 from app.domain.gameplay import ScenarioSession
-from app.domain.scenario import Scenario
+from app.domain.scenario import Choice, Scenario, ScenarioNode
 from app.domain.scoring import Metric, MetricRef, ScoreState
+from app.persistence.identity import SessionStartKey
 from app.persistence.scenarios import ScenarioRepository
 from app.persistence.sessions import SessionRepository, StoredSession
 
@@ -42,6 +52,14 @@ class SessionView:
     deadline: datetime | None
     scenario: Scenario
 
+    @property
+    def node(self) -> ScenarioNode:
+        return current_node(self.scenario, self.session)
+
+    @property
+    def choices(self) -> tuple[Choice, ...]:
+        return available_choices(self.scenario, self.session, now=self.server_time)
+
 
 @dataclass(frozen=True)
 class DecisionResult:
@@ -68,31 +86,87 @@ class SessionService:
         require_text(employee_id, "employee_id")
         require_integer(scenario_version, "scenario_version", positive=True)
         with Session(self.engine) as database, database.begin():
-            document = ScenarioRepository(database).get(scenario_id, scenario_version)
-            if document is None:
-                raise ScenarioNotFound("Scenario version not found")
-            scenario = document.to_domain()
-            values = {
-                MetricRef(Metric.PASSENGER_LOYALTY): 50,
-                MetricRef(Metric.SAFETY_RATING): 50,
-            }
-            values.update(
-                {
-                    MetricRef(Metric.COMPETENCY, key): 0
-                    for key in scenario.competency_ids
-                }
-            )
-            now = utc_time(self.clock(database), "server time")
-            session = start_session(
-                scenario,
-                session_id=str(uuid4()),
-                employee_id=employee_id,
-                initial_scores=ScoreState(values),
-                now=now,
-            )
-            SessionRepository(database).add(scenario, session)
-            view = self._view(scenario, session, now)
+            view = self._start(database, scenario_id, scenario_version, employee_id)
         return view
+
+    def _start(
+        self,
+        database: Session,
+        scenario_id: str,
+        scenario_version: int,
+        employee_id: str,
+    ) -> SessionView:
+        document = ScenarioRepository(database).get(scenario_id, scenario_version)
+        if document is None:
+            raise ScenarioNotFound("Scenario version not found")
+        scenario = document.to_domain()
+        values = {
+            MetricRef(Metric.PASSENGER_LOYALTY): 50,
+            MetricRef(Metric.SAFETY_RATING): 50,
+        }
+        values.update(
+            {MetricRef(Metric.COMPETENCY, key): 0 for key in scenario.competency_ids}
+        )
+        now = utc_time(self.clock(database), "server time")
+        session = start_session(
+            scenario,
+            session_id=str(uuid4()),
+            employee_id=employee_id,
+            initial_scores=ScoreState(values),
+            now=now,
+        )
+        SessionRepository(database).add(scenario, session)
+        return self._view(scenario, session, now)
+
+    def start_idempotent(
+        self, *, scenario_id: str, scenario_version: int, employee_id: str, key: str
+    ) -> tuple[SessionView, bool]:
+        require_text(key, "idempotency key")
+        with Session(self.engine) as database, database.begin():
+            database.execute(
+                insert(SessionStartKey)
+                .values(
+                    employee_id=employee_id,
+                    key=key,
+                    scenario_id=scenario_id,
+                    scenario_version=scenario_version,
+                )
+                .on_conflict_do_nothing(index_elements=["employee_id", "key"])
+            )
+            record = database.scalar(
+                select(SessionStartKey)
+                .where(
+                    SessionStartKey.employee_id == employee_id,
+                    SessionStartKey.key == key,
+                )
+                .with_for_update()
+            )
+            if record is None:
+                raise DomainError("Missing session start key")
+            if (record.scenario_id, record.scenario_version) != (
+                scenario_id,
+                scenario_version,
+            ):
+                raise UseCaseError(
+                    "idempotency_conflict",
+                    "Key already used for a different start request",
+                )
+            replayed = record.session_id is not None
+            if record.session_id is None:
+                view = self._start(database, scenario_id, scenario_version, employee_id)
+                record.session_id = view.session.id
+            else:
+                repository = SessionRepository(database)
+                row = repository.lock(record.session_id)
+                if row is None:
+                    raise DomainError("Session start key refers to a missing session")
+                scenario, session = repository.load(row)
+                if session.employee_id != employee_id:
+                    raise DomainError("Session start key owner mismatch")
+                now = utc_time(self.clock(database), "server time")
+                session, _ = self._expire_due(repository, row, scenario, session, now)
+                view = self._view(scenario, session, now)
+        return view, replayed
 
     @staticmethod
     def _view(
@@ -121,13 +195,15 @@ class SessionService:
         repository.save(row, scenario, session)
         return session, True
 
-    def get(self, session_id: str) -> SessionView:
+    def get(self, session_id: str, *, employee_id: str | None = None) -> SessionView:
         with Session(self.engine) as database, database.begin():
             repository = SessionRepository(database)
             row = repository.lock(session_id)
             if row is None:
                 raise SessionNotFound("Session not found")
             scenario, session = repository.load(row)
+            if employee_id is not None and session.employee_id != employee_id:
+                raise SessionNotFound("Session not found")
             now = utc_time(self.clock(database), "server time")
             session, _ = self._expire_due(repository, row, scenario, session, now)
             view = self._view(scenario, session, now)
@@ -141,6 +217,7 @@ class SessionService:
         node_id: str,
         choice_id: str,
         expected_sequence: int,
+        employee_id: str | None = None,
     ) -> DecisionResult:
         require_text(decision_id, "decision_id")
         if decision_id.startswith("timeout:"):
@@ -156,6 +233,8 @@ class SessionService:
             if row is None:
                 raise SessionNotFound("Session not found")
             scenario, session = repository.load(row)
+            if employee_id is not None and session.employee_id != employee_id:
+                raise SessionNotFound("Session not found")
             now = utc_time(self.clock(database), "server time")
             session, timed_out = self._expire_due(
                 repository, row, scenario, session, now

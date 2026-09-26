@@ -19,7 +19,12 @@
 Контракт движка и запускаемый пример — в
 [SCENARIO_ENGINE.md](docs/SCENARIO_ENGINE.md), правила баллов, API и работа
 таймера — в [GAME_MECHANICS.md](docs/GAME_MECHANICS.md).
-Игровой интерфейс, аутентификация, долговременный прогресс и интеграции ещё не реализованы.
+На этапе 6 добавлен REST API `/api/v1`: demo-вход, профили, каталог,
+сессии, решения, результаты, достижения, лидерборд и аналитика. Есть общие ошибки,
+пагинация, идемпотентный старт и контракт HR/LMS без внешних вызовов.
+Полный контракт и пример прохождения — в [API.md](docs/API.md).
+Игровой интерфейс, production-аутентификация, долговременный прогресс,
+автоматическая выдача наград и реальные интеграции ещё не реализованы.
 Следующий этап не начинается автоматически.
 
 ## Scope этапа 2
@@ -59,7 +64,8 @@ Achievements, Loyalty Program, HR/LMS integration и ticketing integration.
 - `scenarios/` — JSON Schema, три демо и [инструкция формата](scenarios/README.md).
 - `docs/BUILD_PLAN.md` — архитектура, границы и этапы разработки.
 - `docs/SCENARIO_ENGINE.md` — контракт движка, восстановление и добавление ветки.
-- `docs/GAME_MECHANICS.md` — баллы, журнал, серверный таймер и API прохождения.
+- `docs/GAME_MECHANICS.md` — баллы, журнал и серверный таймер.
+- `docs/API.md` — REST/OpenAPI, demo-вход, ошибки, результаты и контракт HR/LMS.
 - `compose.yaml` — PostgreSQL, backend, timer-worker и frontend для локального запуска.
 
 ## Зависимости
@@ -86,6 +92,10 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 Проверка: <http://127.0.0.1:8000/health> → `{"status":"ok"}`.
 OpenAPI: <http://127.0.0.1:8000/docs>.
 
+Для ручного запуска demo-вход включается в окружении backend:
+`$env:DEMO_AUTH_ENABLED='true'` в PowerShell либо `export DEMO_AUTH_ENABLED=true`.
+Все demo-входы используют один синтетический профиль; это локальная демонстрация.
+
 Для БД установите `DATABASE_URL` в окружении backend. Например, в PowerShell:
 `$env:DATABASE_URL='postgresql+psycopg://vsm:YOUR_LOCAL_PASSWORD@localhost:5432/vsm'`.
 В bash используйте `export DATABASE_URL='...'`. Спецсимволы пароля в URL нужно
@@ -103,7 +113,8 @@ python -m app.worker
 `TIMER_POLL_SECONDS` задаёт положительный интервал опроса в секундах (по умолчанию
 `1`). Worker необходим для автоматических переходов без HTTP-запросов.
 Срок хранится в БД; после перезапуска worker обработает просроченные попытки.
-Примеры API и семантика задержек — в [GAME_MECHANICS.md](docs/GAME_MECHANICS.md).
+Семантика задержек — в [GAME_MECHANICS.md](docs/GAME_MECHANICS.md),
+маршруты и пример прохождения — в [API.md](docs/API.md).
 
 ## Frontend локально
 
@@ -125,7 +136,9 @@ Vite проксирует `/api/health` в `http://127.0.0.1:8000/health`.
 
 Скопируйте `.env.example` в `.env` (`Copy-Item .env.example .env` в PowerShell
 или `cp .env.example .env` в bash). Задайте собственный `POSTGRES_PASSWORD`.
-Затем из корня:
+Для локального demo-входа задайте также `DEMO_AUTH_ENABLED=true`; в новом
+`.env.example` это уже указано. Если `.env` остался с прошлого этапа, добавьте
+эту переменную. Без неё выдача demo-токенов отключена. Затем из корня:
 
 ```sh
 docker compose config --quiet
@@ -138,7 +151,8 @@ docker compose up --build -d --wait
 готовность БД: <http://localhost:8000/ready>. Порты привязаны к loopback.
 Compose передаёт пароль БД отдельно через `PGPASSWORD`, без сборки URL.
 Корневой `DATABASE_URL` используется только при ручном локальном запуске.
-Миграции создают `scenario_versions` и `scenario_sessions`; worker запускается
+Миграции создают версии сценариев, сессии, demo-профили/токены, ключи старта
+и таблицы достижений; worker запускается
 после применения схемы. Демо импортируются отдельной командой:
 
 ```sh
@@ -196,6 +210,8 @@ site-packages. Тесты движка проверяют ветвление, у
 JSON-снимки — в `tests/scenarios`. PostgreSQL-проверки этапа 5 покрывают
 сохранение сессий, автоматический worker, гонки выбора с таймаутом и двойную
 отправку. HTTP-тесты проверяют контракт и запрет клиентского времени/баллов.
+Этап 6 дополнительно проверяет demo-токены, ownership, конкурентный старт,
+ошибки, OpenAPI, результаты, пагинацию и read models на реальном PostgreSQL.
 Playwright предусмотрен для будущих E2E на этапе игрового UI.
 
 Не сохраняйте `.env`, ключи, пароли или персональные данные в Git.

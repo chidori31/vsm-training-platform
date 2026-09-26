@@ -1,0 +1,244 @@
+# REST API — этап 6
+
+## Границы
+
+Цель: версионированный REST API поверх существующего движка. FastAPI отвечает
+за валидацию, аутентификацию и представление; application services владеют
+транзакциями и запросами, чистый домен — правилами переходов и баллов.
+
+- `/api/v1`: auth/demo, profiles, scenarios, sessions, decisions, results,
+  achievements, leaderboard, analytics и контракт HR/LMS.
+- Demo-вход явно включается `DEMO_AUTH_ENABLED=true`. Все входы используют
+  один синтетический профиль; непрозрачные bearer-токены действуют 24 часа,
+  в PostgreSQL сохраняются только их SHA-256 хеши. Это не идентификация сотрудника.
+- Старт требует `Idempotency-Key`, владелец берётся из токена.
+  Уникальный ключ пользователя и созданная сессия сохраняются одной транзакцией.
+  Повтор возвращает ту же сессию; другой payload с тем же ключом даёт 409.
+- Решения сохраняют существующий `decision_id` и `expected_sequence`.
+  Timeout по-прежнему фиксируется до HTTP-конфликта. Чужая сессия даёт 404.
+- Ошибки имеют `error.code/message/details` и опциональное `data`
+  с актуальным состоянием при конфликте решения. Валидация не отражает сырые входы.
+- Коллекции: `limit=20` (1–100), `offset=0`, `items/total/limit/offset`,
+  стабильная сортировка. Лидерборд ограничен версией сценария, сортирует
+  лучший завершённый результат пользователя по выбранной независимой шкале.
+- Достижения и разблокировки читаются из таблиц; автоматическая выдача
+  не добавляется в этот этап. Аналитика вычисляется по сохранённым попыткам.
+- HR/LMS: строгая схема учебного результата, описание направления обмена,
+  endpoint-заглушка возвращает 501 после валидации, без сети и записи данных.
+- Неверсионированный API этапа 5 заменяется; health/readiness сохраняются.
+  Nginx/Vite сохраняют `/api/v1`, прежний `/api/health` продолжает работать.
+
+## Реализованный порядок этапа
+
+1. Тесты OpenAPI, общего формата ошибок и контракта HR/LMS; API schema/error layer.
+2. PostgreSQL identity, idempotency и read models, миграция; demo auth,
+   ownership и конкурентный старт с проверками в изолированной тестовой БД.
+3. Тесты полного API-прохождения, текущего узла, результата, страниц,
+   каталога, достижений, лидерборда и аналитики; тонкие маршруты и сервисы.
+4. Обновление документации/прокси; Ruff, mypy, полный pytest с PostgreSQL,
+   frontend проверки, Docker/migration и smoke через Nginx.
+5. Проверка diff; один commit `feat: expose gameplay and integration API`,
+   push текущей ветки и остановка.
+
+## Адреса и авторизация
+
+Базовый путь одинаков для backend, Vite и Nginx: `/api/v1`.
+Локальный backend — `http://127.0.0.1:8000`, Compose/Nginx —
+`http://127.0.0.1:8080`. Swagger UI — `http://127.0.0.1:8000/docs`,
+ReDoc — `/redoc`, машинная спецификация — `/openapi.json` на backend.
+
+Примените миграции и импортируйте demo-сценарии по README. Для demo-входа
+задайте `DEMO_AUTH_ENABLED=true`: Compose читает эту переменную из `.env`
+(она включена в `.env.example`), ручной backend — из своего окружения.
+При отсутствии флага вход отключён. В Swagger нажмите Authorize и вставьте
+значение `access_token`; схема BearerAuth добавляет заголовок сама.
+
+Все маршруты данных требуют `Authorization: Bearer <access_token>`.
+Исключения — demo login, публичные health/readiness и контракт HR/LMS.
+Токен истекает через 24 часа по времени PostgreSQL и переживает рестарт backend.
+Флаг отключает выдачу новых demo-токенов; уже выданные действуют до истечения.
+Токены не возвращаются повторно из БД и не записываются в открытом виде.
+
+Все demo-входы принадлежат одному профилю `demo-employee`: участники
+демонстрации видят общую историю этого профиля. Пользователь не выбирает ID
+через запрос. Это не production-аутентификация и не проверка реальной личности.
+Пароли, роли, SSO, logout/revocation и лимиты запросов — будущая работа.
+Сессии старого API сохраняются, но доступны через v1 только владельцу с
+совпадающим ID; произвольные прежние `employee_id` не присваиваются demo-профилю.
+
+## Маршруты
+
+Все пути ниже начинаются с `/api/v1`.
+
+| Метод и путь | Назначение / ответ |
+| --- | --- |
+| POST `/auth/demo` | Без тела; 200: access_token, token_type, expires_at, profile |
+| GET `/auth/me` | Текущий профиль: id, display_name |
+| GET `/profiles/me` | Тот же профиль |
+| GET `/profiles/me/achievements` | Страница сохранённых разблокировок пользователя |
+| GET `/scenarios` | Страница версий: id, version, title, competency_ids |
+| GET `/scenarios/{scenario_id}/versions/{version}` | Полный строгий ScenarioDocument выбранной версии |
+| POST `/sessions` | Старт; обязательный Idempotency-Key, тело scenario_id + scenario_version |
+| GET `/sessions/{session_id}` | Актуальное состояние после согласования timeout |
+| POST `/sessions/{session_id}/decisions` | Принять решение или подтвердить его повтор |
+| GET `/sessions/{session_id}/decisions` | Страница истории решений в порядке принятия |
+| GET `/sessions/{session_id}/result` | Итог завершённой попытки и её снимок |
+| GET `/results` | Страница итогов завершённых попыток текущего пользователя |
+| GET `/achievements` | Страница определений достижений с декларативными условиями |
+| GET `/leaderboard` | Лучшие завершённые попытки пользователей для версии сценария |
+| GET `/analytics/me` | Сводка сохранённых попыток текущего пользователя |
+| GET `/integrations/hr-lms/contract` | Публичное описание и JSON Schema будущего обмена |
+| POST `/integrations/hr-lms/training-results` | Публичная проверка контракта, затем 501 |
+
+Тела start/decision запрещают дополнительные поля и не приводят строки/boolean
+к числам. Идентификатор сценария соответствует схеме контента: до 64 символов,
+строчные латинские буквы, цифры, `_`, `-`, первая — буква.
+Версия — положительное целое до 2147483647. `employee_id`, `now`, баллы,
+эффекты и политика из HTTP-запроса не принимаются.
+
+Состояние содержит `session` (снимок v2), `server_time`, `deadline`,
+`expected_sequence`, `current_node` (id/text/terminal/time_limit_seconds)
+и `available_choices` (id/text). Доступность вариантов вычисляет домен;
+клиент не должен повторно реализовывать условия. Каталог версий предназначен
+для учебного демо и открывает полный граф, включая эффекты.
+
+Результат содержит `summary` и `session`. В summary: идентификаторы,
+completed_at, duration_seconds, decision_count, обе независимые шкалы
+и массив компетенций. До завершения возвращается 409 result_not_ready.
+Если GET результата обнаружил истёкший срок, timeout сначала сохраняется;
+переход в ещё один активный узел всё равно даёт result_not_ready.
+
+## Идемпотентность и таймер
+
+Старт: новый ключ даёт 201, повтор того же payload — 200; оба ответа имеют
+`Location: /api/v1/sessions/{id}`. Ключ — непустая строка до 128 символов,
+область уникальности — пользователь. Повтор возвращает актуальное состояние
+той же попытки и не начинает таймер заново. Изменение сценария/версии с тем же
+ключом даёт 409 idempotency_conflict. Неуспешный старт не резервирует ключ.
+Ключи и связь с сессией сохраняются атомарно и переживают рестарт.
+
+Решение принимает `decision_id`, `node_id`, `choice_id`,
+`expected_sequence`. Номер равен длине истории на момент принятия, включая
+таймауты. Новый ID для нового действия; для повтора отправьте исходные поля
+без изменений. Ответ 200 содержит outcome accepted/duplicate и
+acknowledged_decision_id. Повтор не начисляет баллы и возвращает текущее состояние.
+Префикс `timeout:` зарезервирован для серверных ID.
+
+Сервер читает время PostgreSQL после блокировки сессии. При `now >= deadline`
+выбор уже не принимается; worker или запрос применяет timeout и фиксирует его.
+Конфликт решения — 409 с единым error и актуальным состоянием в data.
+Если worker уже сделал переход, устаревший выбор может дать decision_rejected;
+если срок обработал сам запрос — decision_timed_out. Оба не применяют выбор.
+Подробная семантика таймера и clamp — в [GAME_MECHANICS.md](GAME_MECHANICS.md).
+
+## Ошибки
+
+Формат одинаков для маршрутизации, валидации, аутентификации и прикладных ошибок:
+
+```json
+{
+  "error": {
+    "code": "session_not_found",
+    "message": "Session not found",
+    "details": []
+  },
+  "data": null
+}
+```
+
+| HTTP | code |
+| --- | --- |
+| 401 | unauthorized; заголовок WWW-Authenticate: Bearer |
+| 404 | not_found, session_not_found, scenario_not_found, demo_auth_disabled |
+| 405 | method_not_allowed |
+| 409 | idempotency_conflict, decision_rejected, decision_timed_out, result_not_ready, domain_conflict |
+| 422 | validation_error; details содержит location/message/type, без сырых входных значений |
+| 500 | internal_error; без traceback |
+| 501 | integration_not_configured |
+| 503 | database_unavailable; без URL и учётных данных |
+
+Несуществующие и чужие сессии одинаково дают 404. На ошибки решений клиент
+может отобразить data и продолжить с новым expected_sequence. Не повторяйте
+изменённый payload под прежним idempotency key/decision_id.
+
+## Пагинация, лидерборд и аналитика
+
+Все коллекции принимают `limit` (1–100, по умолчанию 20) и `offset`
+(0–2147483647, по умолчанию 0), отвечают `items/total/limit/offset`.
+Offset за концом даёт пустой items с исходным total. Каталог сортируется
+по id/version; история — по порядку решений; результаты — по updated_at DESC,
+затем session ID; разблокировки — по времени, затем ID.
+
+Лидерборд требует `scenario_id` и `scenario_version`; metric —
+`safety_rating` (по умолчанию) или `passenger_loyalty`. Для каждого
+зарегистрированного профиля выбирается его лучшая завершённая попытка по этой
+шкале. При равенстве выбирается более раннее завершение, затем session ID.
+Ранги учитывают равенство баллов: 1, 1, 3. Вторая шкала возвращается отдельно,
+общий балл не вычисляется. Активные попытки и другие версии исключены.
+
+Аналитика показывает total/active/completed_sessions, decision_count
+(включая timeout), timeout_count и средние конечные Loyalty/Safety по завершённым
+попыткам. Средняя компетенция учитывает только завершённые попытки, где она
+объявлена; это не долговременный прогресс профиля. Без результатов средние
+шкалы null, массив компетенций пуст. Read models используют сохранённое состояние;
+в отличие от GET конкретной сессии, они не запускают массовую обработку timeout.
+
+Достижения читаются из achievement_definitions, разблокировки — из
+achievement_unlocks. Миграция не создаёт вымышленных наград: новый каталог пуст.
+Создание правил, автоматическая выдача и API редактирования — следующий этап.
+Для небольшого демо результаты, аналитика и leaderboard собираются из
+проверенных снимков в памяти; limit ограничивает ответ, не стоимость агрегации.
+Материализованные проекции и масштабирование требуют отдельного этапа.
+
+## Пример PowerShell
+
+После запуска Compose с включённым demo-входом:
+
+```powershell
+$base = 'http://127.0.0.1:8080/api/v1'
+$login = Invoke-RestMethod -Method Post "$base/auth/demo"
+$headers = @{ Authorization = "Bearer $($login.access_token)" }
+Invoke-RestMethod "$base/scenarios?limit=10" -Headers $headers
+
+$startHeaders = $headers.Clone()
+$startHeaders['Idempotency-Key'] = [guid]::NewGuid().ToString()
+$body = @{ scenario_id = 'demo-service-situation'; scenario_version = 1 } | ConvertTo-Json
+$session = Invoke-RestMethod -Method Post "$base/sessions" -Headers $startHeaders -ContentType 'application/json' -Body $body
+$sessionId = $session.session.id
+
+# Отправьте до истечения 40 секунд; повторяйте с тем же decision_id только тот же выбор.
+$choice = @{ decision_id = [guid]::NewGuid().ToString(); node_id = 'request'; choice_id = 'explain'; expected_sequence = 0 } | ConvertTo-Json
+Invoke-RestMethod -Method Post "$base/sessions/$sessionId/decisions" -Headers $headers -ContentType 'application/json' -Body $choice
+$finish = @{ decision_id = [guid]::NewGuid().ToString(); node_id = 'alternative'; choice_id = 'offer'; expected_sequence = 1 } | ConvertTo-Json
+Invoke-RestMethod -Method Post "$base/sessions/$sessionId/decisions" -Headers $headers -ContentType 'application/json' -Body $finish
+Invoke-RestMethod "$base/sessions/$sessionId/result" -Headers $headers
+```
+
+## Контракт HR/LMS
+
+TrainingResultExport версии 1 содержит event_id, employee_reference, session_id,
+scenario_id/version, completed_at (с часовым поясом), passenger_loyalty,
+safety_rating и competencies. Шкалы ограничены 0–100; компетенции уникальны по ID.
+employee_reference — будущая связь с идентификатором внешней системы;
+источник и правила сопоставления сейчас не назначены.
+
+GET contract возвращает direction platform_to_hr_lms, status contract_only
+и полную JSON Schema. POST training-results — диагностическая заглушка контракта:
+невалидный payload даёт 422, валидный — 501 integration_not_configured.
+Он не подтверждает доставку, не хранит payload, не создаёт очередь и не вызывает
+сеть. event_id предназначен для будущей дедупликации у адаптера/получателя;
+сейчас нет ни получателя, ни обещания exactly-once доставки.
+
+## Совместимость и проверки
+
+Неверсионированные `/sessions` этапа 5 удалены. Payload старта больше не
+принимает employee_id; конфликт решения использует общий error/data.
+Health/readiness остаются доступны без токена, включая прежний /api/health
+через proxy. Формат сохранённых сессий остаётся v2, сценариев — v1.
+Миграция 20260926_03 добавляет таблицы, не переписывая прежние попытки.
+
+API-тесты: `tests/test_api_contract.py`, `tests/test_timed_api.py`,
+`tests/timed_sessions/test_rest_api.py`. Интеграционные тесты выполняются
+на реальном PostgreSQL в изолированных схемах: конкурентный start, повтор после
+рестарта, rollback ключа, ownership, timeout, результаты, страницы, достижение,
+независимые лидерборды и аналитика. Полные команды проверок — в README.

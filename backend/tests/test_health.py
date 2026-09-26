@@ -16,7 +16,7 @@ def test_readiness_without_configuration_returns_service_unavailable(monkeypatch
     with TestClient(app) as client:
         response = client.get("/ready")
     assert response.status_code == 503
-    assert response.json() == {"detail": "Database unavailable"}
+    assert response.json()["error"]["code"] == "database_unavailable"
 
 
 def test_readiness_with_unreachable_database_does_not_leak_credentials(monkeypatch):
@@ -26,5 +26,5 @@ def test_readiness_with_unreachable_database_does_not_leak_credentials(monkeypat
     with TestClient(app) as client:
         response = client.get("/ready")
     assert response.status_code == 503
-    assert response.json() == {"detail": "Database unavailable"}
+    assert response.json()["error"]["code"] == "database_unavailable"
     assert "secret" not in response.text

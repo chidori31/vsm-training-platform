@@ -4,7 +4,7 @@ from sqlalchemy import Connection, create_engine, pool
 
 from alembic import context
 from app.db import Base
-from app.persistence import scenarios, sessions  # noqa: F401 — register metadata
+from app.persistence import achievements, identity, scenarios, sessions  # noqa: F401
 
 target_metadata = Base.metadata
 

@@ -10,7 +10,8 @@ export default defineConfig(({ mode }) => {
       proxy: {
         "/api": {
           target: env.API_PROXY_TARGET || "http://127.0.0.1:8000",
-          rewrite: (path) => path.replace(/^\/api/, ""),
+          rewrite: (path) =>
+            path.startsWith("/api/v1/") ? path : path.replace(/^\/api/, ""),
         },
       },
     },

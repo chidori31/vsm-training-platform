@@ -26,6 +26,7 @@ services:
       PGUSER: ${POSTGRES_USER:-vsm}
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       DATABASE_URL: postgresql+psycopg:///
+      DEMO_AUTH_ENABLED: ${DEMO_AUTH_ENABLED:-false}
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:

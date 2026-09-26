@@ -120,54 +120,22 @@ JSON-снимки имеют `format_version: 2`. При сохранении и
 сессий не было, поэтому новая миграция не преобразует ранее сохранённые
 внешние JSON-файлы. JSON-формат сценария по-прежнему имеет `schema_version: 1`.
 
-## Минимальный HTTP API
+## HTTP API после этапа 6
 
-Прямой backend: `http://127.0.0.1:8000`; через Nginx/Vite к маршруту добавляется
-`/api`. Схема запросов и ответов доступна в `/docs` backend.
+Актуальный контракт — [API.md](API.md). Маршруты находятся под `/api/v1`.
+Demo-вход выдаёт bearer-токен; владелец сессии берётся из него. POST `/sessions`
+требует Idempotency-Key и scenario_id/scenario_version, без employee_id.
+Повтор старта возвращает ту же попытку и не перезапускает таймер.
 
-| Запрос | Тело | Результат |
-| --- | --- | --- |
-| `POST /sessions` | `scenario_id`, `scenario_version`, `employee_id` | 201, новая сессия |
-| `GET /sessions/{id}` | Нет | 200, актуальная сессия после проверки срока |
-| `POST /sessions/{id}/decisions` | `decision_id`, `node_id`, `choice_id`, `expected_sequence` | 200 accepted/duplicate либо 409 timed_out/rejected |
+GET сессии возвращает снимок v2, серверное время, deadline, текущий узел,
+доступные варианты и expected_sequence. POST решения принимает decision_id,
+node_id, choice_id и expected_sequence. Конфликты используют общий error/data:
+при позднем выборе timeout уже сохранён, актуальное состояние находится в data.
+GET `/sessions/{id}/result` доступен после завершения; история решений
+поддерживает пагинацию. Все операции с сессией проверяют владельца.
 
-Успешный ответ и ответ с конфликтом решения включают `session`, авторитетное
-`server_time` и `deadline` (либо null). Ответ на решение дополнительно содержит `outcome`,
-`acknowledged_decision_id` (для accepted/duplicate) и `error` (для отказа).
-Неверная форма запроса и дополнительные поля, в том числе `now`, `scores`,
-`effects` или `scoring_policy`, дают 422. Отсутствующая версия сценария или
-сессия дают 404; недоступная БД — 503.
-
-После миграции, импорта демо и запуска backend/worker можно выполнить в bash:
-
-```sh
-curl -sS -X POST http://127.0.0.1:8000/sessions \
-  -H 'Content-Type: application/json' \
-  -d '{"scenario_id":"demo-service-situation","scenario_version":1,"employee_id":"demo-employee"}'
-```
-
-Скопируйте `session.id` из ответа. До истечения 40-секундного срока отправьте
-выбор из стартового узла (замените `SESSION_ID`):
-
-```sh
-curl -sS -X POST http://127.0.0.1:8000/sessions/SESSION_ID/decisions \
-  -H 'Content-Type: application/json' \
-  -d '{"decision_id":"demo-decision-1","node_id":"request","choice_id":"explain","expected_sequence":0}'
-curl -sS http://127.0.0.1:8000/sessions/SESSION_ID
-```
-
-Повторите тот же POST, чтобы получить `duplicate` без нового начисления.
-Для следующего решения используйте новый ID и `expected_sequence: 1`.
-Чтобы проверить автоматический timeout, создайте новую сессию и не отправляйте
-решения: worker сохранит исход после срока, даже если браузер закрыт.
-Историю можно прочитать позднее через GET. В PowerShell для ручной проверки
-удобен `Invoke-RestMethod` или OpenAPI `/docs`; переносы `\` выше относятся к bash.
-
-API предназначен для локальной демонстрации и не имеет аутентификации.
-`employee_id` задаётся вызывающей стороной и не подтверждает личность; проверки
-владельца сессии и роли будут частью отдельного этапа. Игровой UI, выдача наград,
-прогресс профиля, аналитические проекции, внешние интеграции и Playwright E2E
-ещё не реализованы.
+Прежние неверсионированные `/sessions` удалены. Правила баллов, границ,
+таймера, детерминизма и атомарного сохранения, описанные выше, сохранены.
 
 ## Запуск и проверки
 

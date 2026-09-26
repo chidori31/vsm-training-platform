@@ -1,6 +1,19 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import current_user
+from app.domain.profiles import EmployeeProfile
+from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def authenticated_schema_tests():
+    app.dependency_overrides[current_user] = lambda: EmployeeProfile(
+        "synthetic", "Synthetic"
+    )
+    yield
+    app.dependency_overrides.clear()
+
 
 @pytest.mark.parametrize(
     "extra,value",
@@ -19,7 +32,7 @@ def test_decision_request_cannot_supply_server_authority(extra, value):
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/sessions/s/decisions",
+                "/api/v1/sessions/s/decisions",
                 json={
                     "decision_id": "d",
                     "node_id": "start",
@@ -50,7 +63,7 @@ def test_decision_request_rejects_invalid_sequence_and_reserved_id(changes):
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/sessions/s/decisions",
+                "/api/v1/sessions/s/decisions",
                 json={
                     "decision_id": "d",
                     "node_id": "start",
@@ -72,11 +85,11 @@ def test_session_start_disallows_client_initial_scores():
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/sessions",
+                "/api/v1/sessions",
+                headers={"Idempotency-Key": "test"},
                 json={
                     "scenario_id": "demo",
                     "scenario_version": 1,
-                    "employee_id": "synthetic",
                     "initial_scores": {},
                 },
             )
@@ -94,5 +107,5 @@ def test_session_endpoint_without_valid_database_is_503(monkeypatch, database_ur
     else:
         monkeypatch.setenv("DATABASE_URL", database_url)
     with TestClient(app) as client:
-        response = client.get("/sessions/s")
+        response = client.get("/api/v1/sessions/s")
     assert response.status_code == 503
