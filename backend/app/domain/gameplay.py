@@ -27,6 +27,7 @@ class Decision:
     sequence: int
     decided_at: datetime
     effects: tuple[AddScore, ...] = ()
+    explanation: str = ""
 
     def __post_init__(self) -> None:
         for field, value in (
@@ -37,6 +38,8 @@ class Decision:
         ):
             require_text(value, field)
         require_integer(self.sequence, "decision sequence", positive=True)
+        if self.explanation != "":
+            require_text(self.explanation, "decision explanation")
         object.__setattr__(self, "decided_at", utc_time(self.decided_at, "decided_at"))
         object.__setattr__(self, "effects", freeze_items(self.effects, AddScore))
 
@@ -53,6 +56,7 @@ class ScenarioSession:
     status: SessionStatus = SessionStatus.ACTIVE
     completed_at: datetime | None = None
     decisions: tuple[Decision, ...] = ()
+    initial_scores: ScoreState | None = None
 
     def __post_init__(self) -> None:
         for field, value in (
@@ -68,6 +72,10 @@ class ScenarioSession:
             self.status, SessionStatus
         ):
             raise DomainError("Invalid session scores or status")
+        if self.initial_scores is not None and not isinstance(
+            self.initial_scores, ScoreState
+        ):
+            raise DomainError("Invalid initial session scores")
         if (self.status is SessionStatus.COMPLETED) != (self.completed_at is not None):
             raise DomainError("Only completed sessions require completed_at")
         if self.completed_at is not None:
