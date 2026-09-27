@@ -31,6 +31,8 @@ class DemoLoginRequest(BaseModel):
         "demo-north-03",
         "demo-south-04",
         "demo-other-05",
+        "demo-instructor",
+        "demo-methodist",
     ] = "demo-employee"
 
 

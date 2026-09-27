@@ -51,6 +51,9 @@ class RatePolicy:
             "shift_advance": 120,
             "simulation_start": 30,
             "simulation_action": 120,
+            "training_start": 30,
+            "training_action": 120,
+            "training_fork": 30,
         }
         if action not in defaults:
             raise ValueError("Unknown sensitive action")

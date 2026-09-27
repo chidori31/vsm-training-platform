@@ -20,6 +20,7 @@ from app.persistence.gamification import SessionReward
 from app.persistence.identity import UserProfile
 from app.persistence.sessions import SessionRepository, StoredSession
 from app.persistence.simulations import SimulationReward
+from app.persistence.training import TrainingReward
 
 
 def fact_from(record: SessionReward) -> RewardFact:
@@ -160,11 +161,22 @@ class GamificationService:
                     .order_by(SimulationReward.awarded_at)
                 )
             )
-            total_xp = progress.xp + sum(row.xp for row in simulation_rewards)
+            training_rewards = list(
+                database.scalars(
+                    select(TrainingReward)
+                    .where(TrainingReward.employee_id == employee_id)
+                    .order_by(TrainingReward.awarded_at)
+                )
+            )
+            operational_rewards: list[SimulationReward | TrainingReward] = [
+                *simulation_rewards,
+                *training_rewards,
+            ]
+            total_xp = progress.xp + sum(row.xp for row in operational_rewards)
             level, level_start, next_level = level_for(total_xp)
             simulation_achievements: dict[str, datetime] = {}
             competencies = dict(progress.competencies)
-            for simulation_reward in simulation_rewards:
+            for simulation_reward in operational_rewards:
                 gains = simulation_reward.event["payload"].get("competency_deltas", {})
                 for key in ("regulation", "communication"):
                     gain = int(gains.get(key, 0))
@@ -185,7 +197,7 @@ class GamificationService:
                 "level": level,
                 "level_start_xp": level_start,
                 "next_level_xp": next_level,
-                "completed_sessions": len(records) + len(simulation_rewards),
+                "completed_sessions": len(records) + len(operational_rewards),
                 "rule_version": 1,
                 "competencies": [
                     {"competency_id": key, "value": value}
@@ -282,6 +294,10 @@ class GamificationService:
                 select(
                     SimulationReward.employee_id.label("employee_id"),
                     SimulationReward.xp.label("xp"),
+                ),
+                select(
+                    TrainingReward.employee_id.label("employee_id"),
+                    TrainingReward.xp.label("xp"),
                 ),
             ).subquery()
             rows = database.execute(

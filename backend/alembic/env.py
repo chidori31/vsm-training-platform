@@ -14,6 +14,8 @@ from app.persistence import (  # noqa: F401
     sessions,
     shifts,
     simulations,
+    training,
+    training_staff,
 )
 
 target_metadata = Base.metadata

@@ -55,7 +55,7 @@ test("operational shift: carriage, investigation, parallel events, equipment, de
     await (await request.get("/api/v1/simulations/current", { headers })).json()
   ).simulation as Simulation | null;
   if (prior?.status === "active") advanceClock(prior.id, 1200);
-  await page.goto("/");
+  await page.goto("/#legacy-simulation");
   await expect(
     page.getByRole("button", { name: /Принять (рабочую|новую) смену/ }),
   ).toBeVisible();
@@ -113,11 +113,12 @@ test("operational shift: carriage, investigation, parallel events, equipment, de
   }
   async function time(seconds: number) {
     advanceClock(runId, seconds);
-    const response = page.waitForResponse((r) =>
-      r.url().endsWith("/simulations/current"),
-    );
+    const response = await request.get(`/api/v1/simulations/${runId}`, {
+      headers,
+    });
+    expect(response.ok()).toBe(true);
+    state = (await response.json()) as Simulation;
     await page.reload();
-    state = (await (await response).json()).simulation as Simulation;
     await expect(
       page.getByRole("region", { name: "Операционная смена" }),
     ).toBeVisible();

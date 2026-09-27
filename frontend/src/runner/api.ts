@@ -303,6 +303,14 @@ export async function request(
 }
 export function friendlyError(error: unknown): string {
   if (error instanceof ApiError) {
+    if (error.code === "training_active")
+      return "У вас уже есть активная поездка. Откройте её через журнал смен и продолжите.";
+    if (error.code === "training_revision_conflict")
+      return "Обстановка изменилась. Обновляем состояние; выберите действие заново.";
+    if (error.code === "training_action_unavailable")
+      return "Действие сейчас недоступно. Проверьте положение проводника, факты и оборудование.";
+    if (error.status === 403)
+      return "У этой учебной роли нет доступа к разделу или действию.";
     if (error.code === "demo_auth_disabled")
       return "Демо-вход отключён. Включите DEMO_AUTH_ENABLED=true на сервере.";
     if (error.code === "decision_timed_out")

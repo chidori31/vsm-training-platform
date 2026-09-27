@@ -6,11 +6,12 @@ from app.application.demo_personas import PERSONAS
 
 
 def test_demo_identity_catalog_needs_no_personal_contact_data():
-    assert len(PERSONAS) == 5
-    assert len({p["id"] for p in PERSONAS}) == 5
+    assert len(PERSONAS) == 7
+    assert len({p["id"] for p in PERSONAS}) == 7
     for persona in PERSONAS:
         assert persona["id"].startswith("demo-")
-        assert persona["display_name"].startswith("Учебный проводник ")
+        assert persona["display_name"].startswith("Учебный ")
+        assert DemoLoginRequest(persona_id=persona["id"]).persona_id == persona["id"]
         assert persona["company_id"].startswith("demo-")
         assert set(persona) == {
             "id",

@@ -640,6 +640,25 @@ class RunnerController {
     );
   };
 
+  replaceResource = (
+    path: string,
+    body: unknown,
+    key: string,
+    signal: AbortSignal,
+  ): Promise<unknown> => {
+    if (this.closed)
+      return Promise.reject(new DOMException("Aborted", "AbortError"));
+    return this.api(
+      path,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": key },
+        body: JSON.stringify(body),
+      },
+      signal,
+    );
+  };
+
   writeNotificationRead = (
     id: string,
     read: boolean,
@@ -731,8 +750,15 @@ export function useScenarioRunner() {
       Promise.reject(new Error("Подключение ещё не готово.")),
     [],
   );
+  const replaceResource = useCallback(
+    (path: string, body: unknown, key: string, signal: AbortSignal) =>
+      controller.current?.replaceResource(path, body, key, signal) ??
+      Promise.reject(new Error("Подключение ещё не готово.")),
+    [],
+  );
   return {
     ...view,
+    replaceResource,
     writeResource,
     openSession: (id: string) =>
       controller.current?.openSession(id) ?? Promise.resolve(),

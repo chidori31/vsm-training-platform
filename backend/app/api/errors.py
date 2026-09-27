@@ -34,7 +34,7 @@ class ErrorResponse(BaseModel):
 
 ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     code: {"model": ErrorResponse}
-    for code in (401, 404, 405, 409, 413, 422, 429, 500, 501, 503)
+    for code in (401, 403, 404, 405, 409, 413, 422, 429, 500, 501, 503)
 }
 
 
@@ -97,9 +97,15 @@ def install_error_handlers(app: FastAPI) -> None:
             )
         status = {
             "unauthorized": 401,
+            "forbidden": 403,
+            "content_not_found": 404,
+            "content_invalid": 422,
+            "comment_invalid": 422,
             "notification_not_found": 404,
             "shift_not_found": 404,
             "simulation_not_found": 404,
+            "training_not_found": 404,
+            "assignment_not_found": 404,
             "demo_auth_disabled": 404,
             "idempotency_conflict": 409,
             "result_not_ready": 409,

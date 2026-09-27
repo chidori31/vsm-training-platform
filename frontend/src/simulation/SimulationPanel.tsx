@@ -14,19 +14,45 @@ import {
   type SimulationDebrief,
 } from "./contracts";
 import "./simulation.css";
+import {
+  parseTraining,
+  parseTrainingCurrent,
+  parseTrainingDebrief,
+  modeNames,
+  type Training,
+  type TrainingDebrief,
+  type TrainingMode,
+} from "../training/contracts";
+import {
+  ModeChooser,
+  ActionProgress,
+  Assessment,
+  ReplayPanel,
+  ComparisonPanel,
+  LearningPanel,
+  MyAssignments,
+  LearnerComments,
+  SoundSwitch,
+  TutorialGuide,
+} from "../training/TrainingTools";
 
 type Command = { path: string; body: Record<string, unknown>; key: string };
-function loadPending(identityId: string): Command | null {
+function loadPending(identityId: string, training: boolean): Command | null {
   try {
     const v = JSON.parse(
-      sessionStorage.getItem(`vsm.simulation.command.${identityId}`) ?? "null",
+      sessionStorage.getItem(
+        `vsm.${training ? "training" : "simulation"}.command.${identityId}`,
+      ) ?? "null",
     ) as Command | null;
     if (
       v &&
       typeof v.key === "string" &&
       v.key.length <= 128 &&
       typeof v.path === "string" &&
-      /^\/simulations(?:\/[\w-]+\/actions)?$/.test(v.path) &&
+      (training
+        ? /^\/training\/runs(?:\/[\w-]+\/(?:actions|fork))?$/
+        : /^\/simulations(?:\/[\w-]+\/actions)?$/
+      ).test(v.path) &&
       v.body &&
       typeof v.body === "object"
     )
@@ -36,9 +62,13 @@ function loadPending(identityId: string): Command | null {
   }
   return null;
 }
-function savePending(identityId: string, command: Command | null) {
+function savePending(
+  identityId: string,
+  command: Command | null,
+  training: boolean,
+) {
   try {
-    const key = `vsm.simulation.command.${identityId}`;
+    const key = `vsm.${training ? "training" : "simulation"}.command.${identityId}`;
     if (command) sessionStorage.setItem(key, JSON.stringify(command));
     else sessionStorage.removeItem(key);
   } catch {
@@ -86,6 +116,13 @@ function ActionButton({
         title={action.description}
       >
         {action.label}
+        {action.duration_seconds !== undefined &&
+          action.duration_seconds > 0 && (
+            <span className="training-action-duration">
+              {" "}
+              · {action.duration_seconds} с
+            </span>
+          )}
       </button>
       <small>{!action.enabled ? action.reason : action.description}</small>
     </div>
@@ -223,11 +260,23 @@ export function SimulationPanel({
   read,
   write,
   identityId,
+  training = false,
+  runId,
 }: {
   read: ReadResource;
   write: WriteResource;
   identityId: string;
+  training?: boolean;
+  runId?: string;
 }) {
+  const [requestedRun, setRequestedRun] = useState(runId);
+  const runsPath = training ? "/training/runs" : "/simulations";
+  const currentPath = requestedRun
+    ? `${runsPath}/${encodeURIComponent(requestedRun)}`
+    : training
+      ? "/training/current"
+      : "/simulations/current";
+  const [mode, setMode] = useState<TrainingMode>("work");
   const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [debrief, setDebrief] = useState<SimulationDebrief | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -237,7 +286,7 @@ export function SimulationPanel({
   const [zoneId, setZoneId] = useState<string | null>(null);
   const [incidentId, setIncidentId] = useState<string | null>(null);
   const [pending, setPending] = useState<Command | null>(() =>
-    loadPending(identityId),
+    loadPending(identityId, training),
   );
   const pendingRef = useRef(pending);
   const busy = useRef(false);
@@ -295,9 +344,15 @@ export function SimulationPanel({
       inFlight = true;
       const epoch = generation.current;
       try {
-        const next = parseCurrentSimulation(
-          await read("/simulations/current", abort.signal),
-        );
+        const next = (
+          requestedRun
+            ? training
+              ? parseTraining
+              : parseSimulation
+            : training
+              ? parseTrainingCurrent
+              : parseCurrentSimulation
+        )(await read(currentPath, abort.signal));
         if (!active || epoch !== generation.current) return;
         accept(next);
         setLoaded(true);
@@ -318,17 +373,19 @@ export function SimulationPanel({
       abort.abort();
       clearInterval(interval);
     };
-  }, [read, identityId, refresh]);
+  }, [read, identityId, refresh, training, currentPath, requestedRun]);
   useEffect(() => {
     if (simulation?.status !== "completed") return;
     const abort = new AbortController();
     void read(
-      `/simulations/${encodeURIComponent(simulation.id)}/debrief`,
+      `${runsPath}/${encodeURIComponent(simulation.id)}/debrief`,
       abort.signal,
     )
       .then((v) => {
         if (!abort.signal.aborted) {
-          const parsed = parseSimulationDebrief(v);
+          const parsed = (
+            training ? parseTrainingDebrief : parseSimulationDebrief
+          )(v);
           if (parsed.simulation.id !== simulation.id)
             throw new Error(
               "Получен разбор другой смены. Обновите подключение.",
@@ -341,13 +398,17 @@ export function SimulationPanel({
         if (!abort.signal.aborted) setError(friendlyError(cause));
       });
     return () => abort.abort();
-  }, [read, simulation?.id, simulation?.status, refresh]);
+  }, [read, simulation?.id, simulation?.status, refresh, training, runsPath]);
   function remember(command: Command | null) {
     pendingRef.current = command;
     setPending(command);
-    savePending(identityId, command);
+    savePending(identityId, command, training);
   }
-  async function submit(action?: Action) {
+  async function submit(
+    action?: Action,
+    startBody?: Record<string, unknown>,
+    forkAt?: number,
+  ) {
     if (busy.current) return;
     let command = pendingRef.current;
     if (!command) {
@@ -355,7 +416,7 @@ export function SimulationPanel({
       command =
         action && simulation
           ? {
-              path: `/simulations/${encodeURIComponent(simulation.id)}/actions`,
+              path: `${runsPath}/${encodeURIComponent(simulation.id)}/actions`,
               key,
               body: {
                 command_id: key,
@@ -365,7 +426,17 @@ export function SimulationPanel({
                 zone_id: action.zone_id,
               },
             }
-          : { path: "/simulations", key, body: {} };
+          : forkAt !== undefined && simulation
+            ? {
+                path: `${runsPath}/${encodeURIComponent(simulation.id)}/fork`,
+                key,
+                body: { at_seconds: forkAt },
+              }
+            : {
+                path: runsPath,
+                key,
+                body: training ? (startBody ?? { mode }) : {},
+              };
       remember(command);
     }
     busy.current = true;
@@ -375,7 +446,7 @@ export function SimulationPanel({
     const abort = new AbortController();
     operation.current = abort;
     try {
-      const next = parseSimulation(
+      const next = (training ? parseTraining : parseSimulation)(
         await write(command.path, command.body, command.key, abort.signal),
       );
       if (abort.signal.aborted) return;
@@ -385,13 +456,15 @@ export function SimulationPanel({
       if (
         displayed &&
         displayed.id !== next.id &&
-        (command.path !== "/simulations" ||
+        ((command.path !== runsPath && !command.path.endsWith("/fork")) ||
           displayed.status === "active" ||
           Date.parse(next.started_at) < Date.parse(displayed.started_at))
       ) {
         setRefresh((n) => n + 1);
         return;
       }
+      if (command.path === runsPath || command.path.endsWith("/fork"))
+        setRequestedRun(undefined);
       accept(next);
       setDebrief((previous) =>
         previous?.simulation.id === next.id && next.status === "completed"
@@ -423,6 +496,8 @@ export function SimulationPanel({
   const activeIncidents =
     simulation?.incidents.filter((i) => i.status !== "resolved") ?? [];
   const blocked = working || !!pending || !!error;
+  const trainingState = training ? (simulation as Training | null) : null;
+  const trainingDebrief = training ? (debrief as TrainingDebrief | null) : null;
   return (
     <section className="simulation" aria-label="Операционная смена">
       {error && (
@@ -446,13 +521,56 @@ export function SimulationPanel({
         </div>
       )}
       {!loaded && <p role="status">Подключаемся к рабочей смене…</p>}
+      {training && loaded && simulation?.status !== "active" && (
+        <ModeChooser mode={mode} onChange={setMode} disabled={blocked} />
+      )}
+      {trainingState && (
+        <div className="training-mode-badge">
+          <strong>
+            {modeNames[trainingState.mode]}
+            {trainingState.source_id ? " · Альтернативная попытка" : ""}
+          </strong>
+          <span>
+            {trainingState.reward_eligible
+              ? "Рабочий результат сохраняется в профиле"
+              : "Учебная попытка без начисления XP"}
+          </span>
+          {trainingState.assignment_id && (
+            <small>Назначение инструктора · одинаковые условия группы</small>
+          )}
+        </div>
+      )}
+      {training && <SoundSwitch simulation={trainingState} />}
+      {trainingState && <TutorialGuide simulation={trainingState} />}
+      {trainingState?.pending_action && trainingState.status === "active" && (
+        <ActionProgress
+          action={trainingState.pending_action}
+          elapsed={elapsed}
+          disabled={blocked}
+          onCancel={() =>
+            void submit({
+              id: "cancel",
+              label: "Прервать действие",
+              description: "",
+              enabled: true,
+              reason: null,
+              zone_id: null,
+              incident_id: null,
+            })
+          }
+        />
+      )}
       {loaded && !simulation && !error && (
         <div className="sim-briefing">
           <div className="sim-briefing-number" aria-hidden="true">
             01<span>ВСМ / ЭКИПАЖ</span>
           </div>
           <div>
-            <span className="micro-label">ПРИЁМ СМЕНЫ · 20 МИНУТ</span>
+            <span className="micro-label">
+              {training
+                ? `${modeNames[mode].toUpperCase()} · ${mode === "work" ? "20 МИНУТ" : mode === "demo" ? "4 МИНУТЫ" : "3 МИНУТЫ"}`
+                : "ПРИЁМ СМЕНЫ · 20 МИНУТ"}
+            </span>
             <h1>
               Вагон под вашей
               <br />
@@ -476,7 +594,11 @@ export function SimulationPanel({
               disabled={blocked}
               onClick={() => void submit()}
             >
-              {working ? "Принимаем смену…" : "Принять рабочую смену"}{" "}
+              {working
+                ? "Принимаем смену…"
+                : training && mode !== "work"
+                  ? `Начать: ${modeNames[mode]}`
+                  : "Принять рабочую смену"}{" "}
               <span aria-hidden="true">→</span>
             </button>
           </div>
@@ -748,7 +870,9 @@ export function SimulationPanel({
                     {simulation.actions
                       .filter(
                         (a) =>
-                          a.zone_id === null || a.zone_id === selectedZone?.id,
+                          (!training || a.id !== "cancel") &&
+                          (a.zone_id === null ||
+                            a.zone_id === selectedZone?.id),
                       )
                       .map((a) => (
                         <ActionButton
@@ -841,7 +965,26 @@ export function SimulationPanel({
               </div>
             </>
           ) : debrief?.simulation.id === simulation.id ? (
-            <BlackBox value={debrief} />
+            <>
+              <BlackBox value={debrief} />
+              {trainingState && trainingDebrief && (
+                <>
+                  <Assessment
+                    assessment={trainingDebrief.assessment}
+                    journal={trainingState.journal}
+                  />
+                  <ComparisonPanel simulation={trainingState} read={read} />
+                  <ReplayPanel
+                    key={trainingState.id}
+                    simulation={trainingState}
+                    read={read}
+                    disabled={blocked}
+                    onFork={(at) => void submit(undefined, undefined, at)}
+                  />
+                  <LearnerComments read={read} runId={trainingState.id} />
+                </>
+              )}
+            </>
           ) : (
             <p role="status">Собираем журнал смены…</p>
           )}
@@ -851,9 +994,37 @@ export function SimulationPanel({
               disabled={blocked}
               onClick={() => void submit()}
             >
-              Принять новую смену <span aria-hidden="true">→</span>
+              {training ? `Начать: ${modeNames[mode]}` : "Принять новую смену"}{" "}
+              <span aria-hidden="true">→</span>
             </button>
           )}
+        </>
+      )}
+      {training && loaded && simulation?.status !== "active" && (
+        <>
+          <MyAssignments
+            read={read}
+            onOpen={(id) => {
+              generation.current += 1;
+              setDebrief(null);
+              accept(null);
+              setLoaded(false);
+              setRequestedRun(id);
+              setRefresh((n) => n + 1);
+            }}
+            disabled={blocked}
+            onStart={(id, assignedMode) =>
+              void submit(undefined, { mode: assignedMode, assignment_id: id })
+            }
+          />
+          <LearningPanel
+            key={simulation?.id ?? "initial"}
+            read={read}
+            disabled={blocked}
+            onPractice={(id) =>
+              void submit(undefined, { mode: "practice", competency_id: id })
+            }
+          />
         </>
       )}
     </section>

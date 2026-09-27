@@ -21,6 +21,12 @@ def sensitive_action(method: str, path: str) -> str | None:
         return None
     if path == "/api/v1/sessions":
         return "start"
+    if path == "/api/v1/training/runs":
+        return "training_start"
+    if path.startswith("/api/v1/training/runs/") and path.endswith("/actions"):
+        return "training_action"
+    if path.startswith("/api/v1/training/runs/") and path.endswith("/fork"):
+        return "training_fork"
     if path == "/api/v1/simulations":
         return "simulation_start"
     if path == "/api/v1/shifts":

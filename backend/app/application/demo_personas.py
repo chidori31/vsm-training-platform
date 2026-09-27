@@ -2,6 +2,20 @@
 
 PERSONAS = (
     {
+        "id": "demo-instructor",
+        "display_name": "Учебный инструктор",
+        "company_id": "demo-company",
+        "depot_id": "north",
+        "brigade_id": "01",
+    },
+    {
+        "id": "demo-methodist",
+        "display_name": "Учебный методист",
+        "company_id": "demo-company",
+        "depot_id": "north",
+        "brigade_id": "01",
+    },
+    {
         "id": "demo-employee",
         "display_name": "Учебный проводник 01",
         "company_id": "demo-company",

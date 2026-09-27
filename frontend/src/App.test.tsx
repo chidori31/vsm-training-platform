@@ -18,6 +18,7 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/#training");
   runner = {
     writeResource: vi.fn(async () => ({})),
+    replaceResource: vi.fn(async () => ({})),
     openSession: vi.fn(async () => {}),
     identity: { id: "demo-employee", display_name: "Demo" },
     readResource: vi.fn(() => new Promise<unknown>(() => {})),
@@ -241,12 +242,29 @@ describe("scenario runner interface", () => {
 describe("primary operational mode", () => {
   it("opens the working shift by default and keeps training in its own navigation", async () => {
     window.history.replaceState(null, "", "/");
-    runner.readResource = vi.fn(async () => ({ simulation: null }));
+    runner.readResource = vi.fn(async (path) =>
+      path === "/training/access"
+        ? { role: "employee", group_id: "demo" }
+        : path === "/training/assignments"
+          ? { items: [] }
+          : path === "/training/learning"
+            ? {
+                competencies: [],
+                patterns: [],
+                recommendations: [],
+                statistics: { completed_runs: 0, completed_scenarios: 0 },
+                source_notice: "Учебная модель",
+              }
+            : { simulation: null },
+    );
     render(<App />);
     expect(
       await screen.findByRole("button", { name: /Принять рабочую смену/ }),
     ).toBeVisible();
-    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Рабочая смена/ })).toBeChecked();
+    expect(
+      screen.queryByRole("radio", { name: "Сервисная ситуация" }),
+    ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Тренировки" }));
     expect(
       screen.getByRole("button", { name: "Начать сценарий" }),

@@ -1,6 +1,7 @@
 import { ContractError } from "../runner/api";
 
 export interface Action {
+  duration_seconds?: number;
   id: string;
   label: string;
   description: string;

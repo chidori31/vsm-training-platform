@@ -3,6 +3,7 @@ WORKDIR /app
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
+COPY scenarios/training/demo-v2.json /scenarios/training/demo-v2.json
 RUN npm run build
 
 FROM nginx:stable-alpine

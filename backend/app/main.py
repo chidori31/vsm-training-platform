@@ -14,6 +14,8 @@ from app.api.security import ApiSecurityMiddleware
 from app.api.sessions import router as sessions_router
 from app.api.shifts import router as shifts_router
 from app.api.simulations import router as simulations_router
+from app.api.training import router as training_router
+from app.api.training_staff import router as training_staff_router
 from app.db import database_available
 
 app = FastAPI(title="VSM Platform API", version="1.0.0", responses=ERROR_RESPONSES)
@@ -28,6 +30,8 @@ v1.include_router(learning_router)
 v1.include_router(retention_router)
 v1.include_router(shifts_router)
 v1.include_router(simulations_router)
+v1.include_router(training_router)
+v1.include_router(training_staff_router)
 app.include_router(v1)
 
 

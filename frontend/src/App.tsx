@@ -16,6 +16,7 @@ import { Debrief } from "./learning/Debrief";
 import { TodayBriefing } from "./shift/TodayBriefing";
 import { ShiftPanel, PersonalBriefing } from "./shift/ShiftPanel";
 import { SimulationPanel } from "./simulation/SimulationPanel";
+import { TrainingHub } from "./training/TrainingHub";
 import { RetentionPanel } from "./retention/RetentionPanel";
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
@@ -297,12 +298,22 @@ export default function App() {
         session?.status !== "active" &&
         runner.phase !== "loading" ? (
           runner.identity ? (
-            <SimulationPanel
-              key={runner.identity.id}
-              read={runner.readResource}
-              write={runner.writeResource}
-              identityId={runner.identity.id}
-            />
+            window.location.hash === "#legacy-simulation" ? (
+              <SimulationPanel
+                key={runner.identity.id}
+                read={runner.readResource}
+                write={runner.writeResource}
+                identityId={runner.identity.id}
+              />
+            ) : (
+              <TrainingHub
+                key={runner.identity.id}
+                read={runner.readResource}
+                write={runner.writeResource}
+                replace={runner.replaceResource}
+                identityId={runner.identity.id}
+              />
+            )
           ) : (
             <div role="alert">
               <p>
